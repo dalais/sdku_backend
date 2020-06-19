@@ -56,7 +56,6 @@ func main() {
 	sr := r.PathPrefix("/api/").Subrouter()
 	sr.Handle("/status", StatusHandler).Methods("GET")
 	sr.Handle("/products", jwtMiddleware.Handler(ProductsHandler)).Methods("GET")
-	sr.Handle("/products/{slug}/feedback", NotImplemented).Methods("POST")
 
 	// Статику (картинки, скрипти, стили) будем раздавать
 	// по определенному роуту /static/{file}
@@ -87,29 +86,6 @@ var ProductsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 	json.NewEncoder(w).Encode(products)
 })
 
-// AddFeedbackHandler ... The feedback handler will add either positive or negative feedback to the product
-// We would normally save this data to the database - but for this demo, we'll fake it
-// so that as long as the request is successful and we can match a product to our catalog of products we'll return an OK status.
-var AddFeedbackHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	var product Product
-	vars := mux.Vars(r)
-	slug := vars["slug"]
-
-	for _, p := range products {
-		if p.Slug == slug {
-			product = p
-		}
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if product.Slug != "" {
-		payload, _ := json.Marshal(product)
-		w.Write([]byte(payload))
-	} else {
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-	}
-})
-
 // GetTokenHandler ...
 var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 	r *http.Request) {
@@ -120,7 +96,7 @@ var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 	// Устанавливаем набор параметров для токена
 	claims["admin"] = true
 	claims["name"] = "Adminushka"
-	claims["exp"] = time.Now().Add(time.Hour * 24 * 30).Unix()
+	claims["exp"] = time.Now().Add(34 * 24 * time.Hour).Unix()
 
 	// Подписываем токен нашим секретным ключем
 	tokenString, _ := token.SignedString(mySigningKey)
@@ -151,9 +127,11 @@ func (jwtmiddleware CustJwtMiddleware) FromCookie(r *http.Request) (string, erro
 	if authHeader == "" {
 		return "", nil
 	}
-
 	cookie, _ := r.Cookie("access_token")
 	if cookie == nil {
+		return "", nil
+	}
+	if cookie.HttpOnly == false {
 		return "", nil
 	}
 
