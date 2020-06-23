@@ -2,22 +2,17 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
+	common "github.com/dalais/sdku_backend/config"
+	producthandler "github.com/dalais/sdku_backend/handlers/products"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
-
-// Product ... We will first create a new type called Product
-// This type will contain information about VR experiences
-type Product struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Slug        string `json:"slug"`
-	Description string `json:"description"`
-}
 
 // TokenObj ...
 type TokenObj struct {
@@ -29,17 +24,18 @@ type CustJwtMiddleware struct {
 	*jwtmiddleware.JWTMiddleware
 }
 
-// mySigningKey ... Глобальный секретный ключ
-var mySigningKey = []byte("secret123")
+// APIKey ... Глобальный секретный ключ
+var APIKey []byte
 
-/* We will create our catalog of VR experiences and store them in a slice. */
-var products = []Product{
-	{ID: 1, Name: "World of Authcraft", Slug: "world-of-authcraft", Description: "Battle bugs and protect yourself from invaders while you explore a scary world with no security"},
-	{ID: 2, Name: "Ocean Explorer", Slug: "ocean-explorer", Description: "Explore the depths of the sea in this one of a kind underwater experience"},
-	{ID: 3, Name: "Dinosaur Park", Slug: "dinosaur-park", Description: "Go back 65 million years in the past and ride a T-Rex"},
-	{ID: 4, Name: "Cars VR", Slug: "cars-vr", Description: "Get behind the wheel of the fastest cars in the world."},
-	{ID: 5, Name: "Robin Hood", Slug: "robin-hood", Description: "Pick up the bow and arrow and master the art of archery"},
-	{ID: 6, Name: "Real World VR", Slug: "real-world-vr", Description: "Explore the seven wonders of the world in VR"}}
+// init вызовется перед main()
+func init() {
+	// Загрузка значений из .env файла в систему
+	if err := godotenv.Load(); err != nil {
+		log.Print("No .env file found")
+	}
+	conf := common.New()
+	APIKey = []byte(conf.APIKey)
+}
 
 func main() {
 	// Инициализируем gorilla/mux роутер
@@ -55,7 +51,7 @@ func main() {
 	r.Handle("/auth/jwt", GetTokenHandler).Methods("GET")
 	sr := r.PathPrefix("/api/").Subrouter()
 	sr.Handle("/status", StatusHandler).Methods("GET")
-	sr.Handle("/products", jwtMiddleware.Handler(ProductsHandler)).Methods("GET")
+	sr.Handle("/products", jwtMiddleware.Handler(producthandler.Index())).Methods("GET")
 
 	// Статику (картинки, скрипти, стили) будем раздавать
 	// по определенному роуту /static/{file}
@@ -77,15 +73,6 @@ var StatusHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	w.Write([]byte("API is up and running"))
 })
 
-// ProductsHandler ... The products handler will be called when the user makes a GET request to the /products endpoint.
-// This handler will return a list of products available for users to review
-var ProductsHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// Here we are converting the slice of products to JSON
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(products)
-})
-
 // GetTokenHandler ...
 var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 	r *http.Request) {
@@ -96,16 +83,16 @@ var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 	// Устанавливаем набор параметров для токена
 	claims["admin"] = true
 	claims["name"] = "Adminushka"
-	claims["exp"] = time.Now().Add(34 * 24 * time.Hour).Unix()
+	claims["exp"] = time.Now().Add(30 * 24 * time.Hour).Unix()
 
 	// Подписываем токен нашим секретным ключем
-	tokenString, _ := token.SignedString(mySigningKey)
+	tokenString, _ := token.SignedString(APIKey)
 
 	tokenObj := TokenObj{
 		Token: tokenString,
 	}
 	// Отдаем токен клиенту
-	addCookie(w, "access_token", tokenString, 30*24*time.Hour)
+	addCookie(w, "access_token", tokenString, 1*time.Minute)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tokenObj)
 })
@@ -116,7 +103,7 @@ var custJwtMiddle CustJwtMiddleware
 var jwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 	Extractor: custJwtMiddle.FromCookie,
 	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-		return mySigningKey, nil
+		return APIKey, nil
 	},
 	SigningMethod: jwt.SigningMethodHS256,
 })
@@ -131,9 +118,6 @@ func (jwtmiddleware CustJwtMiddleware) FromCookie(r *http.Request) (string, erro
 	if cookie == nil {
 		return "", nil
 	}
-	if cookie.HttpOnly == false {
-		return "", nil
-	}
 
 	return cookie.Value, nil
 }
@@ -143,11 +127,11 @@ func (jwtmiddleware CustJwtMiddleware) FromCookie(r *http.Request) (string, erro
 func addCookie(w http.ResponseWriter, name, value string, ttl time.Duration) {
 	expire := time.Now().Add(ttl)
 	cookie := http.Cookie{
+		HttpOnly: true,
 		Name:     name,
 		Value:    value,
 		Expires:  expire,
 		Path:     "/",
-		HttpOnly: true,
 	}
 	http.SetCookie(w, &cookie)
 }
