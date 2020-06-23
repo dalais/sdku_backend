@@ -7,7 +7,7 @@ import (
 	"time"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
-	common "github.com/dalais/sdku_backend/config"
+	"github.com/dalais/sdku_backend/config"
 	producthandler "github.com/dalais/sdku_backend/handlers/products"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
@@ -33,7 +33,7 @@ func init() {
 	if err := godotenv.Load(); err != nil {
 		log.Print("No .env file found")
 	}
-	conf := common.New()
+	conf := config.New()
 	APIKey = []byte(conf.APIKey)
 }
 
@@ -92,7 +92,7 @@ var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 		Token: tokenString,
 	}
 	// Отдаем токен клиенту
-	addCookie(w, "access_token", tokenString, 1*time.Minute)
+	addCookie(w, "access_token", tokenString, 1*time.Hour)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tokenObj)
 })
