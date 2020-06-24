@@ -94,7 +94,12 @@ var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 	// Отдаем токен клиенту
 	addCookie(w, "access_token", tokenString, 1*time.Hour)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tokenObj)
+	if string(APIKey) == "" {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode("API key is not found")
+	} else {
+		json.NewEncoder(w).Encode(tokenObj)
+	}
 })
 
 var custJwtMiddle CustJwtMiddleware

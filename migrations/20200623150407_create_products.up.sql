@@ -1,9 +1,13 @@
+BEGIN;
+
 CREATE TABLE products (
-    ID bigserial not null primary key,
+    id bigserial not null primary key,
     name varchar null,
     slug varchar null,
     description varchar null
 );
+
+COMMIT;
 
 INSERT INTO products (name, slug, description) VALUES
     ('World of Authcraft', 'world-of-authcraft', 'Battle bugs and protect yourself from invaders while you explore a scary world with no security'),

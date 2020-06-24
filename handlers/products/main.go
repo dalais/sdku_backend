@@ -17,6 +17,7 @@ func Index() http.Handler {
 		products, err := models.AllProducts()
 		if err != nil {
 			fmt.Println(err)
+			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(products)
