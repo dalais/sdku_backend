@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -27,10 +26,11 @@ func AllProducts() ([]*Product, error) {
 		pr := new(Product)
 		if err := rows.Scan(&pr.ID, &pr.Name, &pr.Slug, &pr.Description); err != nil {
 			log.Printf("Error %d", err)
+			return nil, err
 		}
-		fmt.Println(rows)
 		products = append(products, pr)
 	}
+
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}

@@ -18,9 +18,7 @@ func Index() http.Handler {
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println(len(products))
-		fmt.Println(products)
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode("{}")
+		json.NewEncoder(w).Encode(products)
 	})
 }
