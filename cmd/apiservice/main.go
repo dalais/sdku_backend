@@ -8,6 +8,7 @@ import (
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dalais/sdku_backend/config"
+	"github.com/dalais/sdku_backend/handlers/auth"
 	producthandler "github.com/dalais/sdku_backend/handlers/products"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
@@ -34,7 +35,7 @@ func init() {
 		log.Print("No .env file found")
 	}
 	conf := config.New()
-	APIKey = []byte(conf.APIKey)
+	APIKey = []byte(conf.APPKey)
 }
 
 func main() {
@@ -48,8 +49,9 @@ func main() {
 	// /products - возвращаем набор продуктов,
 	// по которым мы можем оставить отзыв
 	// /products/{slug}/feedback - отображает фидбек пользователя по продукту
-	r.Handle("/auth/jwt", GetTokenHandler).Methods("GET")
 	sr := r.PathPrefix("/api/").Subrouter()
+	sr.Handle("/auth/jwt", GetTokenHandler).Methods("GET")
+	sr.Handle("/auth/register", auth.Register()).Methods("POST")
 	sr.Handle("/status", StatusHandler).Methods("GET")
 	sr.Handle("/products", jwtMiddleware.Handler(producthandler.Index())).Methods("GET")
 

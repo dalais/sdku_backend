@@ -8,7 +8,7 @@ import (
 
 // LocalConfig ...
 type LocalConfig struct {
-	APIKey       string
+	APPKey       string
 	DebugMode    bool
 	DbConnection string
 	DbHost       string
@@ -21,7 +21,7 @@ type LocalConfig struct {
 // New returns a new Local struct
 func New() *LocalConfig {
 	return &LocalConfig{
-		APIKey:       getEnv("API_KEY", ""),
+		APPKey:       getEnv("APP_KEY", ""),
 		DebugMode:    getEnvAsBool("DEBUG_MODE", true),
 		DbConnection: getEnv("DB_CONNECTION", "postgres"),
 		DbHost:       getEnv("DB_HOST", "localhost"),

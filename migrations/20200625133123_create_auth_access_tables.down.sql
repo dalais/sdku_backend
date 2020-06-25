@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS auth_access;
+DROP TABLE IF EXISTS auth_tokens;
