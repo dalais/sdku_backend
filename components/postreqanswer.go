@@ -1,5 +1,10 @@
 package components
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 // PostReqAnswer ...
 type PostReqAnswer struct {
 	Error    int         `json:"error"`
@@ -10,5 +15,14 @@ type PostReqAnswer struct {
 
 // IsEmptyData ...
 func (pra *PostReqAnswer) IsEmptyData() bool {
-	return pra.Data == nil
+	data, err := json.Marshal(pra.Data)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return string(data) == "{}"
+}
+
+// IsEmptyError ...
+func (pra *PostReqAnswer) IsEmptyError() bool {
+	return pra.Error == 0
 }
