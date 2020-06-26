@@ -50,7 +50,6 @@ func main() {
 	// по которым мы можем оставить отзыв
 	// /products/{slug}/feedback - отображает фидбек пользователя по продукту
 	sr := r.PathPrefix("/api/").Subrouter()
-	sr.Handle("/auth/jwt", GetTokenHandler).Methods("GET")
 	sr.Handle("/auth/register", auth.Register()).Methods("POST")
 	sr.Handle("/status", StatusHandler).Methods("GET")
 	sr.Handle("/products", jwtMiddleware.Handler(producthandler.Index())).Methods("GET")

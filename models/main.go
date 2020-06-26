@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"log"
+	"time"
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq" //...
@@ -20,9 +21,6 @@ func init() {
 	InitDB()
 }
 
-func main() {
-}
-
 // InitDB ...
 func InitDB() {
 	conf := config.New()
@@ -37,4 +35,11 @@ func InitDB() {
 	if err = db.Ping(); err != nil {
 		log.Panic(err)
 	}
+
+	// Настройка количества подключений к базе данных
+	// для большей информации можно почитать нижеприведенную статью
+	// https://www.alexedwards.net/blog/configuring-sqldb
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(5 * time.Minute)
 }
