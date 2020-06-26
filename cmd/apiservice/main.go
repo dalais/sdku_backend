@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"github.com/dalais/sdku_backend/config"
 	"github.com/dalais/sdku_backend/handlers/auth"
 	producthandler "github.com/dalais/sdku_backend/handlers/products"
+	"github.com/dalais/sdku_backend/models"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -36,20 +38,38 @@ func init() {
 	}
 	conf := config.New()
 	APIKey = []byte(conf.APPKey)
+
+	// подключение к базе
+	dbEngine := conf.DbConnection
+	dbURL := conf.DbConnection + "://" + conf.DbUsername + ":" + conf.DbPassword + "@" + conf.DbHost + "/" + conf.DbDatabase
+	var err error
+	var db *sql.DB
+	db, err = sql.Open(dbEngine, dbURL)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	if err = db.Ping(); err != nil {
+		log.Panic(err)
+	}
+
+	// Настройка количества подключений к базе данных
+	// для большей информации можно почитать https://www.alexedwards.net/blog/configuring-sqldb
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(5 * time.Minute)
+	models.Db = db
 }
 
 func main() {
 	// Инициализируем gorilla/mux роутер
 	r := mux.NewRouter()
 
-	// Страница по умолчанию для нашего сайта это простой html.
+	// Страница по умолчанию.
 	r.Handle("/", http.FileServer(http.Dir("./views/")))
-	// Наше API состоит из трех роутов
-	// /status - нужен для проверки работоспособности нашего API
-	// /products - возвращаем набор продуктов,
-	// по которым мы можем оставить отзыв
-	// /products/{slug}/feedback - отображает фидбек пользователя по продукту
+
 	sr := r.PathPrefix("/api/").Subrouter()
+	sr.Handle("/auth/jwt", GetTokenHandler).Methods("GET")
 	sr.Handle("/auth/register", auth.Register()).Methods("POST")
 	sr.Handle("/status", StatusHandler).Methods("GET")
 	sr.Handle("/products", jwtMiddleware.Handler(producthandler.Index())).Methods("GET")
@@ -114,7 +134,8 @@ var jwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 	SigningMethod: jwt.SigningMethodHS256,
 })
 
-// FromCookie ...
+// FromCookie ... additional custom method for jwtmiddleware.JWTMiddleware
+// which get token from cookie
 func (jwtmiddleware CustJwtMiddleware) FromCookie(r *http.Request) (string, error) {
 	authHeader := r.Header.Get("Cookie")
 	if authHeader == "" {

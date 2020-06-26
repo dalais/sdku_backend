@@ -15,7 +15,7 @@ type Product struct {
 
 // AllProducts ...
 func AllProducts() ([]*Product, error) {
-	rows, err := db.Query("SELECT * FROM products")
+	rows, err := Db.Query("SELECT * FROM products")
 	if err != nil {
 		return nil, err
 	}
