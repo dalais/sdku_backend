@@ -30,10 +30,10 @@ func Register() http.Handler {
 			for _, e := range err.(validator.ValidationErrors) {
 				msg := struct {
 					Field string
-					Msg   string
+					Msg   interface{}
 				}{
 					Field: e.Field(),
-					Msg:   e.Field(),
+					Msg:   e.Value(),
 				}
 				fmt.Println(msg)
 				fmt.Println(e)

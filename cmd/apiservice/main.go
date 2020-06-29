@@ -3,8 +3,10 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
@@ -14,7 +16,7 @@ import (
 	"github.com/dalais/sdku_backend/models"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
+	"gopkg.in/yaml.v2"
 )
 
 // TokenObj ...
@@ -29,20 +31,30 @@ type CustJwtMiddleware struct {
 
 // APIKey ... Глобальный секретный ключ
 var APIKey []byte
+var conf config.LocalConfig
 
 // init вызовется перед main()
 func init() {
-	// Загрузка значений из .env файла в систему
-	if err := godotenv.Load(); err != nil {
-		log.Print("No .env file found")
+	file, err := os.Open("./config.yml")
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
-	conf := config.New()
+	defer file.Close()
+
+	decoder := yaml.NewDecoder(file)
+	err = decoder.Decode(&conf)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	APIKey = []byte(conf.APPKey)
 
 	// подключение к базе
-	dbEngine := conf.DbConnection
-	dbURL := conf.DbConnection + "://" + conf.DbUsername + ":" + conf.DbPassword + "@" + conf.DbHost + "/" + conf.DbDatabase
-	var err error
+	dbEngine := conf.Database.Connection
+	dbURL := conf.Database.Connection + "://" + conf.Database.User + ":" + conf.Database.Pass + "@" + conf.Database.Host + "/" + conf.Database.Db
+
 	var db *sql.DB
 	db, err = sql.Open(dbEngine, dbURL)
 	if err != nil {
@@ -80,7 +92,7 @@ func main() {
 		http.FileServer(http.Dir("./static/"))))
 	// Наше приложение запускается на 8000 порту.
 	// Для запуска мы указываем порт и наш роутер
-	http.ListenAndServe(":8000", r)
+	http.ListenAndServe(":"+conf.Server.Port, r)
 }
 
 // NotImplemented ...
