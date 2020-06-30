@@ -1,11 +1,14 @@
 package auth
 
 import (
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/dalais/sdku_backend/components"
+	"github.com/dalais/sdku_backend/store"
 	userstore "github.com/dalais/sdku_backend/store/user"
 	"github.com/go-playground/validator/v10"
 )
@@ -21,6 +24,22 @@ func Registration() http.Handler {
 			Password: u.Password,
 		}
 		answer = Validation(user, answer)
+		if answer.Error == 0 {
+			var newUser userstore.User
+			jsdata, err := json.Marshal(answer.Data)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			json.Unmarshal([]byte(string(jsdata)), &newUser)
+			/* sqlStatement := `
+				INSERT INTO users (email, password, crtd_at, chng_at)
+					VALUES ($1, $2, $3, $4)`
+			_, err = store.Db.Exec(sqlStatement, )
+			if err != nil {
+				panic(err)
+			} */
+		}
 		json.NewEncoder(w).Encode(answer)
 	})
 }
@@ -32,6 +51,19 @@ func Validation(model interface{}, answer *components.PostReqAnswer) *components
 		v := validator.New()
 		_ = v.RegisterValidation("passwd", func(fl validator.FieldLevel) bool {
 			return len(fl.Field().String()) > 6
+		})
+		_ = v.RegisterValidation("email_unique", func(fl validator.FieldLevel) bool {
+			var email string
+			var id int
+			row := store.Db.QueryRow(`SELECT * FROM users WHERE email=$1`, fl.Field().String())
+			switch err := row.Scan(&id, &email); err {
+			case sql.ErrNoRows:
+				return true
+			case nil:
+				return false
+			default:
+				panic(err)
+			}
 		})
 
 		err := v.Struct(model)
@@ -46,6 +78,9 @@ func Validation(model interface{}, answer *components.PostReqAnswer) *components
 				}
 				if e.Tag() == "email" {
 					errMsg = "Field validation for 'Email' failed"
+				}
+				if e.Tag() == "email_unique" {
+					errMsg = "This email is already in use"
 				}
 				msg := struct {
 					Field string `json:"field"`
