@@ -1,4 +1,4 @@
-package models
+package userstore
 
 // User ...
 type User struct {

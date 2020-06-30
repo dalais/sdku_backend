@@ -7,13 +7,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dalais/sdku_backend/config"
 	"github.com/dalais/sdku_backend/handlers/auth"
 	producthandler "github.com/dalais/sdku_backend/handlers/products"
-	"github.com/dalais/sdku_backend/models"
+	"github.com/dalais/sdku_backend/store"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"gopkg.in/yaml.v2"
@@ -31,11 +32,24 @@ type CustJwtMiddleware struct {
 
 // APIKey ... Глобальный секретный ключ
 var APIKey []byte
-var conf config.LocalConfig
+
+// Db ...
+var Db *sql.DB
+
+// ROOT ...
+var ROOT string
+
+// Conf ...
+var Conf config.LocalConfig
 
 // init вызовется перед main()
 func init() {
-	file, err := os.Open("./config.yml")
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Fatal(err)
+	}
+	ROOT = dir
+	file, err := os.Open(ROOT + "/config.yml")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -43,34 +57,33 @@ func init() {
 	defer file.Close()
 
 	decoder := yaml.NewDecoder(file)
-	err = decoder.Decode(&conf)
+	err = decoder.Decode(&Conf)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	APIKey = []byte(conf.APPKey)
+	APIKey = []byte(Conf.APPKey)
 
 	// подключение к базе
-	dbEngine := conf.Database.Connection
-	dbURL := conf.Database.Connection + "://" + conf.Database.User + ":" + conf.Database.Pass + "@" + conf.Database.Host + "/" + conf.Database.Db
+	dbEngine := Conf.Database.Connection
+	dbURL := Conf.Database.Connection + "://" + Conf.Database.User + ":" + Conf.Database.Pass + "@" + Conf.Database.Host + "/" + Conf.Database.Db
 
-	var db *sql.DB
-	db, err = sql.Open(dbEngine, dbURL)
+	Db, err = sql.Open(dbEngine, dbURL)
 	if err != nil {
 		log.Panic(err)
 	}
 
-	if err = db.Ping(); err != nil {
+	if err = Db.Ping(); err != nil {
 		log.Panic(err)
 	}
 
 	// Настройка количества подключений к базе данных
 	// для большей информации можно почитать https://www.alexedwards.net/blog/configuring-sqldb
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(25)
-	db.SetConnMaxLifetime(5 * time.Minute)
-	models.Db = db
+	Db.SetMaxOpenConns(25)
+	Db.SetMaxIdleConns(25)
+	Db.SetConnMaxLifetime(5 * time.Minute)
+	store.Db = Db
 }
 
 func main() {
@@ -78,7 +91,7 @@ func main() {
 	r := mux.NewRouter()
 
 	// Страница по умолчанию.
-	r.Handle("/", http.FileServer(http.Dir("./views/")))
+	r.Handle("/", http.FileServer(http.Dir(ROOT+"/views/")))
 
 	sr := r.PathPrefix("/api/").Subrouter()
 	sr.Handle("/auth/jwt", GetTokenHandler).Methods("GET")
@@ -89,10 +102,10 @@ func main() {
 	// Статику (картинки, скрипти, стили) будем раздавать
 	// по определенному роуту /static/{file}
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/",
-		http.FileServer(http.Dir("./static/"))))
+		http.FileServer(http.Dir(ROOT+"/static/"))))
 	// Наше приложение запускается на 8000 порту.
 	// Для запуска мы указываем порт и наш роутер
-	http.ListenAndServe(":"+conf.Server.Port, r)
+	http.ListenAndServe(":"+Conf.Server.Port, r)
 }
 
 // NotImplemented ...

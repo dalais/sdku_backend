@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/dalais/sdku_backend/models"
+	productstore "github.com/dalais/sdku_backend/store/product"
 )
 
 func main() {
@@ -14,7 +14,7 @@ func main() {
 // Index ...
 func Index() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		products, err := models.AllProducts()
+		products, err := productstore.AllProducts()
 		if err != nil {
 			fmt.Println(err)
 			return

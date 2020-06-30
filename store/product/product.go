@@ -1,7 +1,9 @@
-package models
+package productstore
 
 import (
 	"log"
+
+	"github.com/dalais/sdku_backend/store"
 )
 
 // Product ... We will first create a new type called Product
@@ -15,7 +17,7 @@ type Product struct {
 
 // AllProducts ...
 func AllProducts() ([]*Product, error) {
-	rows, err := Db.Query("SELECT * FROM products")
+	rows, err := store.Db.Query("SELECT * FROM products")
 	if err != nil {
 		return nil, err
 	}
