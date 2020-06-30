@@ -10,8 +10,8 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// Register ...
-func Register() http.Handler {
+// Registration ...
+func Registration() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var u *userstore.User
 		var answer *components.PostReqAnswer

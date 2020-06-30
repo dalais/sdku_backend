@@ -95,7 +95,7 @@ func main() {
 
 	sr := r.PathPrefix("/api/").Subrouter()
 	sr.Handle("/auth/jwt", GetTokenHandler).Methods("GET")
-	sr.Handle("/auth/register", auth.Register()).Methods("POST")
+	sr.Handle("/auth/register", auth.Registration()).Methods("POST")
 	sr.Handle("/status", StatusHandler).Methods("GET")
 	sr.Handle("/products", jwtMiddleware.Handler(producthandler.Index())).Methods("GET")
 
