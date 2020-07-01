@@ -13,6 +13,8 @@ type Product struct {
 	Name        string `json:"name"`
 	Slug        string `json:"slug"`
 	Description string `json:"description"`
+	CrtdAt      string `json:"crtd_at,omitempty"`
+	ChngAt      string `json:"chng_at,omitempty"`
 }
 
 // AllProducts ...
@@ -26,7 +28,7 @@ func AllProducts() ([]*Product, error) {
 	products := make([]*Product, 0)
 	for rows.Next() {
 		pr := new(Product)
-		if err := rows.Scan(&pr.ID, &pr.Name, &pr.Slug, &pr.Description); err != nil {
+		if err := rows.Scan(&pr.ID, &pr.Name, &pr.Slug, &pr.Description, &pr.CrtdAt, &pr.ChngAt); err != nil {
 			log.Printf("Error %d", err)
 			return nil, err
 		}

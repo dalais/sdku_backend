@@ -6,10 +6,13 @@ import (
 	"strings"
 )
 
+// Server configs
 type Server struct {
 	Host string `json:"host"`
 	Port string `json:"port"`
 }
+
+// Database configs
 type Database struct {
 	Connection string `json:"connection"`
 	Host       string `json:"host"`

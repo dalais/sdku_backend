@@ -25,7 +25,7 @@ func Registration() http.Handler {
 			Email:    u.Email,
 			Password: u.Password,
 		}
-		answer = Validation(user, answer)
+		answer = RegisterValidation(user, answer)
 		if answer.Error == 0 {
 			var newUser userstore.User
 			components.Unmarshal(answer.Data, &newUser)
@@ -72,8 +72,8 @@ func Registration() http.Handler {
 	})
 }
 
-// Validation ...
-func Validation(model interface{}, answer *components.PostReqAnswer) *components.PostReqAnswer {
+// RegisterValidation ...
+func RegisterValidation(model interface{}, answer *components.PostReqAnswer) *components.PostReqAnswer {
 	if answer.Error == 0 {
 		answer = &components.PostReqAnswer{}
 		v := validator.New()
