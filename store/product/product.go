@@ -1,6 +1,7 @@
 package productstore
 
 import (
+	"database/sql"
 	"log"
 
 	"github.com/dalais/sdku_backend/store"
@@ -9,12 +10,12 @@ import (
 // Product ... We will first create a new type called Product
 // This type will contain information about VR experiences
 type Product struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
-	Slug        string `json:"slug"`
-	Description string `json:"description"`
-	CrtdAt      string `json:"crtd_at,omitempty"`
-	ChngAt      string `json:"chng_at,omitempty"`
+	ID          int64          `json:"id"`
+	Name        string         `json:"name"`
+	Slug        string         `json:"slug"`
+	Description string         `json:"description"`
+	CrtdAt      sql.NullString `json:"crtd_at,omitempty"`
+	ChngAt      string         `json:"chng_at,omitempty"`
 }
 
 // AllProducts ...
