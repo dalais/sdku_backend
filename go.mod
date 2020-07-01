@@ -8,6 +8,6 @@ require (
 	github.com/go-playground/validator/v10 v10.3.0
 	github.com/golang/gddo v0.0.0-20200611223618-a4829ef13274
 	github.com/gorilla/mux v1.7.4
+	github.com/joho/godotenv v1.3.0
 	github.com/lib/pq v1.7.0
-	gopkg.in/yaml.v2 v2.3.0
 )

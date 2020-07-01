@@ -26,12 +26,8 @@ func Registration() http.Handler {
 		answer = Validation(user, answer)
 		if answer.Error == 0 {
 			var newUser userstore.User
-			jsdata, err := json.Marshal(answer.Data)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			json.Unmarshal([]byte(string(jsdata)), &newUser)
+			components.Unmarshal(answer.Data, &newUser)
+			fmt.Println(newUser)
 			/* sqlStatement := `
 				INSERT INTO users (email, password, crtd_at, chng_at)
 					VALUES ($1, $2, $3, $4)`

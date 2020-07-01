@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -17,7 +16,7 @@ import (
 	"github.com/dalais/sdku_backend/store"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
-	"gopkg.in/yaml.v2"
+	"github.com/joho/godotenv"
 )
 
 // TokenObj ...
@@ -49,19 +48,13 @@ func init() {
 		log.Fatal(err)
 	}
 	ROOT = dir
-	file, err := os.Open(ROOT + "/config.yml")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer file.Close()
 
-	decoder := yaml.NewDecoder(file)
-	err = decoder.Decode(&Conf)
-	if err != nil {
-		fmt.Println(err)
-		return
+	// Загрузка значений из .env файла в систему
+	if err := godotenv.Load(ROOT + "/.env"); err != nil {
+		log.Print("No .env file found")
 	}
+
+	Conf = *config.New()
 
 	APIKey = []byte(Conf.APPKey)
 

@@ -4,7 +4,9 @@ CREATE TABLE products (
     id bigserial not null primary key,
     name varchar null,
     slug varchar null,
-    description varchar null
+    description varchar null,
+    crtd_at timestamp with time zone NULL,
+    chng_at timestamp with time zone NULL DEFAULT (current_timestamp AT TIME ZONE 'UTC')
 );
 
 COMMIT;
