@@ -7,10 +7,10 @@ import (
 
 // PostReqAnswer ...
 type PostReqAnswer struct {
-	Error    int         `json:"error"`
-	Data     interface{} `json:"data"`
-	Message  string      `json:"message"`
-	ErrMesgs []string    `json:"err_mesgs"`
+	Error    int           `json:"error"`
+	Data     interface{}   `json:"data"`
+	Message  string        `json:"message"`
+	ErrMesgs []interface{} `json:"err_mesgs"`
 }
 
 // IsEmptyData ...

@@ -111,7 +111,12 @@ func PostReqHandler(model interface{}, w http.ResponseWriter, r *http.Request) *
 	}
 
 	if errMsg != "" {
-		answer.ErrMesgs = append(answer.ErrMesgs, errMsg)
+		errorMessages := struct {
+			Error string `json:"error"`
+		}{
+			Error: errMsg,
+		}
+		answer.ErrMesgs = append(answer.ErrMesgs, errorMessages)
 	}
 	if len(answer.ErrMesgs) > 0 {
 		answer.Error = len(answer.ErrMesgs)
