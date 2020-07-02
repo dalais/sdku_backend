@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/badoux/checkmail"
 	"github.com/dalais/sdku_backend/components"
@@ -29,7 +28,7 @@ func Registration() http.Handler {
 		}
 
 		// Validation
-		answer = RegisterValidation(user, answer)
+		answer = registerValidation(user, answer)
 		if answer.Error == 0 {
 			// new struct for new user
 			var newUser userstore.User
@@ -47,9 +46,11 @@ func Registration() http.Handler {
 
 			// Storing data
 			sqlStatement := `
-				INSERT INTO users (email, password, crtd_at)
-					VALUES ($1, $2, $3)`
-			_, err = store.Db.Exec(sqlStatement, newUser.Email, hashedPassword, time.Now())
+				INSERT INTO users (email, password)
+					VALUES ($1, $2) RETURNING id, email, crtd_at`
+			err = store.Db.QueryRow(sqlStatement, newUser.Email, hashedPassword).Scan(
+				&user.ID, &user.Email, &user.CrtdAt)
+			user.Password = ""
 			if err != nil {
 				errM := struct {
 					SQLError string `json:"sql_error"`
@@ -61,13 +62,6 @@ func Registration() http.Handler {
 				panic(err)
 			}
 
-			// Get created user
-			user = userstore.User{}
-			row := store.Db.QueryRow(`SELECT id, email, crtd_at FROM users WHERE email=$1`, newUser.Email).Scan(
-				&user.ID, &user.Email, &user.CrtdAt)
-			if row != nil {
-				fmt.Println(row.Error())
-			}
 			if len(answer.ErrMesgs) == 0 {
 				answer.Message = "User successfully created"
 				u := struct {
@@ -83,8 +77,8 @@ func Registration() http.Handler {
 	})
 }
 
-// RegisterValidation ...
-func RegisterValidation(model interface{}, answer *components.PostReqAnswer) *components.PostReqAnswer {
+// registerValidation ...
+func registerValidation(model interface{}, answer *components.PostReqAnswer) *components.PostReqAnswer {
 	if answer.Error == 0 {
 		// Set empty answer struct
 		answer = &components.PostReqAnswer{}

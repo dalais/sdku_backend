@@ -22,19 +22,29 @@ func Login() http.Handler {
 			Email:    u.Email,
 			Password: u.Password,
 			Role:     u.Role,
+			Remember: u.Remember,
 		}
-		user, answer = LoginValidation(user, answer)
-		if answer.Error == 0 {
+		user, answer = loginValidation(user, answer)
+
+		var token components.TokenObj
+
+		// Create and store token
+		if answer.IsEmptyError() {
+			token = storeToken(user, answer)
+		}
+
+		// If everything is in order we set a notification and send the token to cookies
+		if answer.IsEmptyError() {
 			answer.Message = "Authentication is successful"
-			token := components.GetToken(user)
 			components.SendTokenToCookie(w, "access_token", token.Token, 1*time.Hour)
 		}
+
 		json.NewEncoder(w).Encode(answer)
 	})
 }
 
 // LoginValidation ...
-func LoginValidation(user userstore.User, answer *components.PostReqAnswer) (
+func loginValidation(user userstore.User, answer *components.PostReqAnswer) (
 	userstore.User, *components.PostReqAnswer) {
 	if answer.Error == 0 {
 		// new error struct for answer.ErrMesgs
@@ -83,4 +93,42 @@ func LoginValidation(user userstore.User, answer *components.PostReqAnswer) (
 	}
 
 	return user, answer
+}
+
+func storeToken(user userstore.User, answer *components.PostReqAnswer) components.TokenObj {
+
+	tokenID := 0
+	// Create sercret string
+	secret := components.RandomString(32)
+	// Create token object
+	token := components.GetToken(user, []byte(secret))
+
+	// BEGIN transaction
+	tx, err := store.Db.Begin()
+	components.HandleAnswerError(err, answer)
+
+	createTokensql := `
+				INSERT INTO auth_tokens (user_id, access_token, remember)
+					VALUES ($1, $2, $3) RETURNING id`
+	err = tx.QueryRow(createTokensql, user.ID, token.Token, user.Remember).Scan(&tokenID)
+	if err != nil {
+		tx.Rollback()
+		components.HandleAnswerError(err, answer)
+	}
+
+	// insert record into table2, referencing the first record from table1
+	_, err = tx.Exec("INSERT INTO auth_access(token_id, secret) VALUES($1, $2)", tokenID, secret)
+	if err != nil {
+		tx.Rollback()
+		components.HandleAnswerError(err, answer)
+	}
+
+	// COMMIT the transaction
+	components.HandleAnswerError(tx.Commit(), answer)
+	if !answer.IsEmptyError() {
+		token.Token = ""
+		answer.Data = nil
+	}
+
+	return token
 }
