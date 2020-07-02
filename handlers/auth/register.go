@@ -39,8 +39,7 @@ func Registration() http.Handler {
 			password := []byte(newUser.Password)
 			hashedPassword, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
 			if err != nil {
-				fmt.Println(err.Error())
-				answer.Message = err.Error()
+				components.HandleAnswerError(err, answer, custErrMsg)
 				return
 			}
 
@@ -52,13 +51,7 @@ func Registration() http.Handler {
 				&user.ID, &user.Email, &user.CrtdAt)
 			user.Password = ""
 			if err != nil {
-				errM := struct {
-					SQLError string `json:"sql_error"`
-				}{
-					SQLError: err.Error(),
-				}
-				answer.ErrMesgs = append(answer.ErrMesgs, errM)
-				answer.Error = len(answer.ErrMesgs)
+				components.HandleAnswerError(err, answer, custErrMsg)
 				panic(err)
 			}
 

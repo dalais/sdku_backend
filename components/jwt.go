@@ -50,7 +50,7 @@ var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 })
 
 // GetToken for login proccess
-var GetToken = func(user userstore.User, key []byte) TokenObj {
+var GetToken = func(user userstore.User, key string) TokenObj {
 	// Create new token
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
@@ -62,7 +62,7 @@ var GetToken = func(user userstore.User, key []byte) TokenObj {
 	claims["exp"] = time.Now().Add(30 * 24 * time.Hour).Unix()
 
 	// Signing the token
-	tokenString, _ := token.SignedString(key)
+	tokenString, _ := token.SignedString([]byte(key))
 
 	tokenObj := TokenObj{
 		Token: tokenString,

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+
+	"github.com/dalais/sdku_backend/cmd/cnf"
 )
 
 // Unmarshal ...
@@ -28,13 +30,18 @@ func RandomString(n int) string {
 }
 
 // HandleAnswerError ...
-func HandleAnswerError(err error, answer *PostReqAnswer) {
+func HandleAnswerError(err error, answer *PostReqAnswer, msg string) {
 	if err != nil {
 		errM := struct {
 			Error string `json:"error"`
-		}{
-			Error: err.Error(),
+		}{}
+		if cnf.Conf.DebugMode {
+			errM.Error = err.Error()
 		}
+		if !cnf.Conf.DebugMode {
+			errM.Error = msg
+		}
+
 		answer.ErrMesgs = append(answer.ErrMesgs, errM)
 		answer.Error = len(answer.ErrMesgs)
 		fmt.Println(err)

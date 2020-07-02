@@ -5,12 +5,22 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dalais/sdku_backend/cmd/cnf"
 	"github.com/dalais/sdku_backend/components"
 	"github.com/dalais/sdku_backend/store"
 	userstore "github.com/dalais/sdku_backend/store/user"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var (
+	custErrMsg = "Incorrect login or password"
+)
+
+// LoginError ...
+type LoginError struct{}
+
+func (m *LoginError) Error() string {
+	return custErrMsg
+}
 
 // Login ...
 func Login() http.Handler {
@@ -61,29 +71,20 @@ func loginValidation(user userstore.User, answer *components.PostReqAnswer) (
 		row := store.Db.QueryRow(`SELECT id, email, role, password, crtd_at FROM users WHERE email=$1`, user.Email).Scan(
 			&user.ID, &user.Email, &user.Role, &user.Password, &user.CrtdAt)
 		if row != nil {
-			errMsgs.Error = row.Error()
+			components.HandleAnswerError(row, answer, custErrMsg)
 			answer.Data = nil
 		}
 
 		// If record exist, compare passwords
 		if row == nil {
 			err := bcrypt.CompareHashAndPassword([]byte(user.Password), password)
-			if err != nil {
-				errMsgs.Error = err.Error()
-			}
+			components.HandleAnswerError(err, answer, custErrMsg)
 		}
 		user.Password = ""
 
 		// Errors handling
 		if errMsgs.Error != "" {
-			if cnf.Conf.DebugMode {
-				answer.ErrMesgs = append(answer.ErrMesgs, errMsgs)
-			}
-			if !cnf.Conf.DebugMode {
-				errMsgs.Error = "Incorrect email or password"
-				answer.ErrMesgs = append(answer.ErrMesgs, errMsgs)
-			}
-			answer.Error = len(answer.ErrMesgs)
+			components.HandleAnswerError(&LoginError{}, answer, custErrMsg)
 		}
 
 		// If there are no errors, we set user data for the answer.Data field
@@ -101,11 +102,11 @@ func storeToken(user userstore.User, answer *components.PostReqAnswer) component
 	// Create sercret string
 	secret := components.RandomString(32)
 	// Create token object
-	token := components.GetToken(user, []byte(secret))
+	token := components.GetToken(user, secret)
 
 	// BEGIN transaction
 	tx, err := store.Db.Begin()
-	components.HandleAnswerError(err, answer)
+	components.HandleAnswerError(err, answer, custErrMsg)
 
 	createTokensql := `
 				INSERT INTO auth_tokens (user_id, access_token, remember)
@@ -113,18 +114,18 @@ func storeToken(user userstore.User, answer *components.PostReqAnswer) component
 	err = tx.QueryRow(createTokensql, user.ID, token.Token, user.Remember).Scan(&tokenID)
 	if err != nil {
 		tx.Rollback()
-		components.HandleAnswerError(err, answer)
+		components.HandleAnswerError(err, answer, custErrMsg)
 	}
 
 	// insert record into table2, referencing the first record from table1
 	_, err = tx.Exec("INSERT INTO auth_access(token_id, secret) VALUES($1, $2)", tokenID, secret)
 	if err != nil {
 		tx.Rollback()
-		components.HandleAnswerError(err, answer)
+		components.HandleAnswerError(err, answer, custErrMsg)
 	}
 
 	// COMMIT the transaction
-	components.HandleAnswerError(tx.Commit(), answer)
+	components.HandleAnswerError(tx.Commit(), answer, custErrMsg)
 	if !answer.IsEmptyError() {
 		token.Token = ""
 		answer.Data = nil
