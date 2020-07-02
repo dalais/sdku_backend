@@ -26,7 +26,7 @@ func init() {
 	}
 	cnf.ROOT = dir
 
-	// Загрузка значений из .env файла в систему
+	// Load environment variables from .env
 	if err := godotenv.Load(cnf.ROOT + "/.env"); err != nil {
 		log.Print("No .env file found")
 	}
@@ -35,7 +35,7 @@ func init() {
 
 	cnf.APIKey = []byte(cnf.Conf.APPKey)
 
-	// подключение к базе
+	// Strings for database connection
 	dbEngine := cnf.Conf.Database.Connection
 	dbURL := cnf.Conf.Database.Connection + "://" +
 		cnf.Conf.Database.User + ":" +
@@ -43,6 +43,7 @@ func init() {
 		cnf.Conf.Database.Host + "/" +
 		cnf.Conf.Database.Db
 
+	// Database connection
 	cnf.Db, err = sql.Open(dbEngine, dbURL)
 	if err != nil {
 		log.Panic(err)
@@ -52,8 +53,8 @@ func init() {
 		log.Panic(err)
 	}
 
-	// Настройка количества подключений к базе данных
-	// для большей информации можно почитать https://www.alexedwards.net/blog/configuring-sqldb
+	// Configuring the number of database connections
+	// for more information https://www.alexedwards.net/blog/configuring-sqldb
 	cnf.Db.SetMaxOpenConns(25)
 	cnf.Db.SetMaxIdleConns(25)
 	cnf.Db.SetConnMaxLifetime(5 * time.Minute)
@@ -61,10 +62,10 @@ func init() {
 }
 
 func main() {
-	// Инициализируем gorilla/mux роутер
+	// Init router
 	r := mux.NewRouter()
 
-	// Страница по умолчанию.
+	// Default page.
 	r.Handle("/", http.FileServer(http.Dir(cnf.ROOT+"/views/")))
 
 	sr := r.PathPrefix("/api/").Subrouter()
@@ -74,12 +75,10 @@ func main() {
 	sr.Handle("/status", StatusHandler).Methods("GET")
 	sr.Handle("/products", components.MyJwtMiddleware.Handler(producthandler.Index())).Methods("GET")
 
-	// Статику (картинки, скрипти, стили) будем раздавать
-	// по определенному роуту /static/{file}
+	// Static files
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/",
 		http.FileServer(http.Dir(cnf.ROOT+"/static/"))))
-	// Наше приложение запускается на 8000 порту.
-	// Для запуска мы указываем порт и наш роутер
+
 	http.ListenAndServe(":"+cnf.Conf.Server.Port, r)
 }
 

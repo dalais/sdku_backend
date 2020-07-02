@@ -6,13 +6,13 @@ import (
 	"github.com/dalais/sdku_backend/config"
 )
 
-// APIKey ... Глобальный секретный ключ
+// APIKey ... Glopal app key
 var APIKey []byte
 
 // Db ...
 var Db *sql.DB
 
-// ROOT ...
+// ROOT Project root path
 var ROOT string
 
 // Conf ...

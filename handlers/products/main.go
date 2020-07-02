@@ -11,7 +11,7 @@ import (
 func main() {
 }
 
-// Index ...
+// Index - Get all products
 func Index() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		products, err := productstore.AllProducts()

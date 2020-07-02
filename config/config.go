@@ -30,7 +30,7 @@ type LocalConfig struct {
 	Database  `json:"database"`
 }
 
-// New returns a new Local struct
+// New - returns a new Local struct
 func New() *LocalConfig {
 	return &LocalConfig{
 		APPKey:    getEnv("APP_KEY", ""),
@@ -50,7 +50,7 @@ func New() *LocalConfig {
 	}
 }
 
-// Получение env-переменной
+// Getting a env-variable
 func getEnv(key string, defaultVal string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
@@ -59,7 +59,7 @@ func getEnv(key string, defaultVal string) string {
 	return defaultVal
 }
 
-// Получение env-переменной типа int
+// Getting a env-variable of type int
 func getEnvAsInt(name string, defaultVal int) int {
 	valueStr := getEnv(name, "")
 	if value, err := strconv.Atoi(valueStr); err == nil {
@@ -69,7 +69,7 @@ func getEnvAsInt(name string, defaultVal int) int {
 	return defaultVal
 }
 
-// Получение env-переменной типа bool
+// Getting a env-variable of type bool
 func getEnvAsBool(name string, defaultVal bool) bool {
 	valStr := getEnv(name, "")
 	if val, err := strconv.ParseBool(valStr); err == nil {
@@ -79,7 +79,7 @@ func getEnvAsBool(name string, defaultVal bool) bool {
 	return defaultVal
 }
 
-// Получение env-переменной типа slice
+// Getting a env-variable of type slice
 func getEnvAsSlice(name string, defaultVal []string, sep string) []string {
 	valStr := getEnv(name, "")
 

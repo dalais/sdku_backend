@@ -37,17 +37,25 @@ func Login() http.Handler {
 func LoginValidation(user userstore.User, answer *components.PostReqAnswer) (
 	userstore.User, *components.PostReqAnswer) {
 	if answer.Error == 0 {
+		// new error struct for answer.ErrMesgs
 		errMsgs := struct {
 			Error string `json:"error"`
 		}{}
-		password := []byte(user.Password)
+		// New answer struct
 		answer = &components.PostReqAnswer{}
+
+		// Getting the password sent in the request
+		password := []byte(user.Password)
+
+		// Select user from db
 		row := store.Db.QueryRow(`SELECT id, email, role, password, crtd_at FROM users WHERE email=$1`, user.Email).Scan(
 			&user.ID, &user.Email, &user.Role, &user.Password, &user.CrtdAt)
 		if row != nil {
 			errMsgs.Error = row.Error()
 			answer.Data = nil
 		}
+
+		// If record exist, compare passwords
 		if row == nil {
 			err := bcrypt.CompareHashAndPassword([]byte(user.Password), password)
 			if err != nil {
@@ -55,6 +63,8 @@ func LoginValidation(user userstore.User, answer *components.PostReqAnswer) (
 			}
 		}
 		user.Password = ""
+
+		// Errors handling
 		if errMsgs.Error != "" {
 			if cnf.Conf.DebugMode {
 				answer.ErrMesgs = append(answer.ErrMesgs, errMsgs)
@@ -65,6 +75,8 @@ func LoginValidation(user userstore.User, answer *components.PostReqAnswer) (
 			}
 			answer.Error = len(answer.ErrMesgs)
 		}
+
+		// If there are no errors, we set user data for the answer.Data field
 		if len(answer.ErrMesgs) == 0 {
 			answer.Data = user
 		}

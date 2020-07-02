@@ -49,19 +49,19 @@ var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 	}
 })
 
-// GetToken ...
+// GetToken for login proccess
 var GetToken = func(user userstore.User) TokenObj {
-	// Создаем новый токен
+	// Create new token
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 
-	// Устанавливаем набор параметров для токена
+	// Set params for payload
 	claims["id"] = user.ID
 	claims["email"] = user.Email
 	claims["role"] = user.Role
 	claims["exp"] = time.Now().Add(30 * 24 * time.Hour).Unix()
 
-	// Подписываем токен нашим секретным ключем
+	// Signing the token
 	tokenString, _ := token.SignedString(cnf.APIKey)
 
 	tokenObj := TokenObj{

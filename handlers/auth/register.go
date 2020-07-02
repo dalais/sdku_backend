@@ -20,16 +20,23 @@ func Registration() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var u *userstore.User
 		var answer *components.PostReqAnswer
+
+		// Handling post request
 		answer = components.PostReqHandler(&u, w, r)
 		user := userstore.User{
 			Email:    u.Email,
 			Password: u.Password,
 		}
+
+		// Validation
 		answer = RegisterValidation(user, answer)
 		if answer.Error == 0 {
+			// new struct for new user
 			var newUser userstore.User
+			// Set query data for fields the newUser
 			components.Unmarshal(answer.Data, &newUser)
 
+			// Creat hash from password
 			password := []byte(newUser.Password)
 			hashedPassword, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
 			if err != nil {
@@ -37,6 +44,8 @@ func Registration() http.Handler {
 				answer.Message = err.Error()
 				return
 			}
+
+			// Storing data
 			sqlStatement := `
 				INSERT INTO users (email, password, crtd_at)
 					VALUES ($1, $2, $3)`
@@ -52,6 +61,7 @@ func Registration() http.Handler {
 				panic(err)
 			}
 
+			// Get created user
 			user = userstore.User{}
 			row := store.Db.QueryRow(`SELECT id, email, crtd_at FROM users WHERE email=$1`, newUser.Email).Scan(
 				&user.ID, &user.Email, &user.CrtdAt)
@@ -76,11 +86,17 @@ func Registration() http.Handler {
 // RegisterValidation ...
 func RegisterValidation(model interface{}, answer *components.PostReqAnswer) *components.PostReqAnswer {
 	if answer.Error == 0 {
+		// Set empty answer struct
 		answer = &components.PostReqAnswer{}
+
+		// Initialization new validation instance
 		v := validator.New()
+
+		// Custom validation for password length
 		_ = v.RegisterValidation("passwd", func(fl validator.FieldLevel) bool {
 			return len(fl.Field().String()) > 6
 		})
+		// Checking existing email in database
 		_ = v.RegisterValidation("email_unique", func(fl validator.FieldLevel) bool {
 			var email string
 			row := store.Db.QueryRow("SELECT users.email FROM users WHERE email=$1", fl.Field().String())
@@ -94,6 +110,7 @@ func RegisterValidation(model interface{}, answer *components.PostReqAnswer) *co
 				return false
 			}
 		})
+		// Checking existing email. Is used https://github.com/badoux/checkmail
 		_ = v.RegisterValidation("real_email", func(fl validator.FieldLevel) bool {
 			var err error
 			err = checkmail.ValidateFormat(fl.Field().String())
@@ -109,6 +126,8 @@ func RegisterValidation(model interface{}, answer *components.PostReqAnswer) *co
 			return true
 		})
 		err := v.Struct(model)
+
+		// Error handling
 		if err != nil {
 			for _, e := range err.(validator.ValidationErrors) {
 				var errMsg string

@@ -6,8 +6,7 @@ import (
 	"github.com/dalais/sdku_backend/store"
 )
 
-// Product ... We will first create a new type called Product
-// This type will contain information about VR experiences
+// Product model struct
 type Product struct {
 	ID          int64   `json:"id"`
 	Name        *string `json:"name"`
