@@ -53,7 +53,8 @@ func Registration() http.Handler {
 			}
 
 			user = userstore.User{}
-			row := store.Db.QueryRow(`SELECT id, email FROM users WHERE email=$1`, newUser.Email).Scan(&user.ID, &user.Email)
+			row := store.Db.QueryRow(`SELECT id, email, crtd_at FROM users WHERE email=$1`, newUser.Email).Scan(
+				&user.ID, &user.Email, &user.CrtdAt)
 			if row != nil {
 				fmt.Println(row.Error())
 			}

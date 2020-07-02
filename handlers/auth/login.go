@@ -25,6 +25,7 @@ func Login() http.Handler {
 		}
 		user, answer = LoginValidation(user, answer)
 		if answer.Error == 0 {
+			answer.Message = "Authentication is successful"
 			token := components.GetToken(user)
 			components.SendTokenToCookie(w, "access_token", token.Token, 1*time.Hour)
 		}
@@ -47,10 +48,11 @@ func LoginValidation(user userstore.User, answer *components.PostReqAnswer) (
 			errMsgs.Error = row.Error()
 			answer.Data = nil
 		}
-
-		err := bcrypt.CompareHashAndPassword([]byte(user.Password), password)
-		if err != nil {
-			errMsgs.Error = err.Error()
+		if row == nil {
+			err := bcrypt.CompareHashAndPassword([]byte(user.Password), password)
+			if err != nil {
+				errMsgs.Error = err.Error()
+			}
 		}
 		user.Password = ""
 		if errMsgs.Error != "" {
