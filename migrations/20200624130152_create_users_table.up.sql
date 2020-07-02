@@ -8,8 +8,8 @@ CREATE TABLE users (
     token varchar null,
     role smallint DEFAULT 0,
     email_verified timestamp null,
-    crtd_at timestamp with time zone NULL,
-    chng_at timestamp with time zone NULL DEFAULT (current_timestamp AT TIME ZONE 'UTC')
+    crtd_at timestamp with time zone NULL DEFAULT (current_timestamp AT TIME ZONE 'UTC'),
+    chng_at timestamp with time zone NULL
 );
 
 COMMIT;

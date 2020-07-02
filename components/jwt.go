@@ -7,6 +7,7 @@ import (
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dalais/sdku_backend/cmd/cnf"
+	userstore "github.com/dalais/sdku_backend/store/user"
 	"github.com/dgrijalva/jwt-go"
 )
 
@@ -39,8 +40,7 @@ var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 		Token: tokenString,
 	}
 	// Отдаем токен клиенту
-	addCookie(w, "access_token", tokenString, 1*time.Hour)
-	w.Header().Set("Content-Type", "application/json")
+	SendTokenToCookie(w, "access_token", tokenString, 1*time.Hour)
 	if string(cnf.APIKey) == "" {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode("API key is not found")
@@ -48,6 +48,27 @@ var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 		json.NewEncoder(w).Encode(tokenObj)
 	}
 })
+
+// GetToken ...
+var GetToken = func(user userstore.User) TokenObj {
+	// Создаем новый токен
+	token := jwt.New(jwt.SigningMethodHS256)
+	claims := token.Claims.(jwt.MapClaims)
+
+	// Устанавливаем набор параметров для токена
+	claims["id"] = user.ID
+	claims["email"] = user.Email
+	claims["role"] = user.Role
+	claims["exp"] = time.Now().Add(30 * 24 * time.Hour).Unix()
+
+	// Подписываем токен нашим секретным ключем
+	tokenString, _ := token.SignedString(cnf.APIKey)
+
+	tokenObj := TokenObj{
+		Token: tokenString,
+	}
+	return tokenObj
+}
 
 var custJwtMiddle CustJwtMiddleware
 
@@ -75,9 +96,9 @@ func (jwtmiddleware CustJwtMiddleware) FromCookie(r *http.Request) (string, erro
 	return cookie.Value, nil
 }
 
-// addCookie will apply a new cookie to the response of a http request
+// SendTokenToCookie will apply a new cookie to the response of a http request
 // with the key/value specified.
-func addCookie(w http.ResponseWriter, name, value string, ttl time.Duration) {
+func SendTokenToCookie(w http.ResponseWriter, name, value string, ttl time.Duration) {
 	expire := time.Now().Add(ttl)
 	cookie := http.Cookie{
 		HttpOnly: true,

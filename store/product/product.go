@@ -11,11 +11,11 @@ import (
 // This type will contain information about VR experiences
 type Product struct {
 	ID          int64          `json:"id"`
-	Name        string         `json:"name"`
-	Slug        string         `json:"slug"`
-	Description string         `json:"description"`
+	Name        sql.NullString `json:"name"`
+	Slug        sql.NullString `json:"slug"`
+	Description sql.NullString `json:"description"`
 	CrtdAt      sql.NullString `json:"crtd_at,omitempty"`
-	ChngAt      string         `json:"chng_at,omitempty"`
+	ChngAt      sql.NullString `json:"chng_at,omitempty"`
 }
 
 // AllProducts ...

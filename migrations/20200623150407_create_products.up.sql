@@ -5,8 +5,8 @@ CREATE TABLE products (
     name varchar null,
     slug varchar null,
     description varchar null,
-    crtd_at timestamp with time zone NULL,
-    chng_at timestamp with time zone NULL DEFAULT (current_timestamp AT TIME ZONE 'UTC')
+    crtd_at timestamp with time zone NULL DEFAULT (current_timestamp AT TIME ZONE 'UTC'),
+    chng_at timestamp with time zone NULL
 );
 
 COMMIT;
