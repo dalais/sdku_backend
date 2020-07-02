@@ -37,6 +37,7 @@ func HandleAnswerError(err error, answer *PostReqAnswer, msg string) {
 		}{}
 		if cnf.Conf.DebugMode {
 			errM.Error = err.Error()
+			fmt.Println(err)
 		}
 		if !cnf.Conf.DebugMode {
 			errM.Error = msg
@@ -44,6 +45,5 @@ func HandleAnswerError(err error, answer *PostReqAnswer, msg string) {
 
 		answer.ErrMesgs = append(answer.ErrMesgs, errM)
 		answer.Error = len(answer.ErrMesgs)
-		fmt.Println(err)
 	}
 }
