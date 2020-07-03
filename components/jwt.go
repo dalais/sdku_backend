@@ -2,13 +2,15 @@ package components
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dalais/sdku_backend/cmd/cnf"
-	userstore "github.com/dalais/sdku_backend/store/user"
+	"github.com/dalais/sdku_backend/store"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gorilla/sessions"
 )
 
 // TokenObj ...
@@ -50,15 +52,13 @@ var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 })
 
 // GetToken for login proccess
-var GetToken = func(user userstore.User, key string) TokenObj {
+var GetToken = func(key string, tokenID int64) TokenObj {
 	// Create new token
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 
 	// Set params for payload
-	claims["id"] = user.ID
-	claims["email"] = user.Email
-	claims["role"] = user.Role
+	claims["auth"] = tokenID
 	claims["exp"] = time.Now().Add(30 * 24 * time.Hour).Unix()
 
 	// Signing the token
@@ -72,11 +72,31 @@ var GetToken = func(user userstore.User, key string) TokenObj {
 
 var custJwtMiddle CustJwtMiddleware
 
-// MyJwtMiddleware ...
-var MyJwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
+// AppJwtMiddleware ...
+var AppJwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 	Extractor: custJwtMiddle.FromCookie,
 	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 		return cnf.APIKey, nil
+	},
+	SigningMethod: jwt.SigningMethodHS256,
+})
+
+// UserJwtMiddleware ...
+var UserJwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
+	Extractor: custJwtMiddle.FromCookie,
+	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+		var secret []byte
+		var r http.Request
+		sessid, _ := custJwtMiddle.GetSessid(&r)
+		fmt.Println(sessid.Values["rmb"])
+		claims := token.Claims.(jwt.MapClaims)
+		id := claims["auth"]
+		// Select secret from db
+		row := store.Db.QueryRow(`SELECT secret FROM auth_access WHERE token_id=$1`, id).Scan(&secret)
+		if row != nil {
+			fmt.Println(row)
+		}
+		return secret, nil
 	},
 	SigningMethod: jwt.SigningMethodHS256,
 })
@@ -94,6 +114,16 @@ func (jwtmiddleware CustJwtMiddleware) FromCookie(r *http.Request) (string, erro
 	}
 
 	return cookie.Value, nil
+}
+
+// GetSessid ...
+func (jwtmiddleware CustJwtMiddleware) GetSessid(r *http.Request) (*sessions.Session, error) {
+	session, err := cnf.StoreSession.Get(r, "sessid")
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	return session, nil
 }
 
 // SendTokenToCookie will apply a new cookie to the response of a http request

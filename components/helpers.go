@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"github.com/dalais/sdku_backend/cmd/cnf"
 )
@@ -16,17 +17,6 @@ func Unmarshal(data interface{}, relate interface{}) {
 		return
 	}
 	json.Unmarshal([]byte(string(jsdata)), &relate)
-}
-
-// RandomString generator
-func RandomString(n int) string {
-	var letters = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz")
-
-	s := make([]rune, n)
-	for i := range s {
-		s[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(s)
 }
 
 // HandleAnswerError ...
@@ -46,4 +36,15 @@ func HandleAnswerError(err error, answer *PostReqAnswer, msg string) {
 		answer.ErrMesgs = append(answer.ErrMesgs, errM)
 		answer.Error = len(answer.ErrMesgs)
 	}
+}
+
+// RandomString ...
+func RandomString(n int) string {
+	rand.Seed(time.Now().UnixNano())
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }

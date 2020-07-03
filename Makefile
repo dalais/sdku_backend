@@ -5,7 +5,7 @@ export $(shell sed 's/=.*//' .env)
 build:
 		go build -v ./cmd/apiservice
 
-RANDOM_TEXT = $(shell openssl rand -hex 32)
+RANDOM_TEXT = $(shell openssl rand -hex 16)
 gen_app_key:
 	@sed -i "s/${APP_KEY}/${RANDOM_TEXT}/" .env
 migrate:

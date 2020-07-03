@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/dalais/sdku_backend/config"
+	"github.com/gorilla/sessions"
 )
 
 // APIKey ... Glopal app key
@@ -17,3 +18,6 @@ var ROOT string
 
 // Conf ...
 var Conf config.LocalConfig
+
+// StoreSession ...
+var StoreSession *sessions.CookieStore

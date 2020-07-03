@@ -5,9 +5,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dalais/sdku_backend/cmd/cnf"
 	"github.com/dalais/sdku_backend/components"
 	"github.com/dalais/sdku_backend/store"
 	userstore "github.com/dalais/sdku_backend/store/user"
+	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -27,13 +29,17 @@ func Login() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var u *userstore.User
 		var answer *components.PostReqAnswer
+		// Handle http request
 		answer = components.PostReqHandler(&u, w, r)
+
 		user := userstore.User{
 			Email:    u.Email,
 			Password: u.Password,
 			Role:     u.Role,
 			Remember: u.Remember,
 		}
+
+		// Validation fields
 		user, answer = loginValidation(user, answer)
 
 		var token components.TokenObj
@@ -41,6 +47,27 @@ func Login() http.Handler {
 		// Create and store token
 		if answer.IsEmptyError() {
 			token = storeToken(user, answer)
+		}
+
+		// Sessions
+		session, _ := cnf.StoreSession.Get(r, "sessid")
+		session.Values["rmb"] = user.Remember
+
+		var tm int
+		if *user.Remember == true {
+			tm = 60 //86400 * 7
+		} else {
+			tm = 0
+		}
+		session.Options = &sessions.Options{
+			Path:     "/",
+			MaxAge:   tm,
+			HttpOnly: true,
+		}
+		err := session.Save(r, w)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
 		// If everything is in order we set a notification and send the token to cookies
@@ -96,22 +123,21 @@ func loginValidation(user userstore.User, answer *components.PostReqAnswer) (
 	return user, answer
 }
 
+// TODO ...
 func storeToken(user userstore.User, answer *components.PostReqAnswer) components.TokenObj {
 
-	tokenID := 0
+	var tokenID int64
 	// Create sercret string
 	secret := components.RandomString(32)
-	// Create token object
-	token := components.GetToken(user, secret)
 
 	// BEGIN transaction
 	tx, err := store.Db.Begin()
 	components.HandleAnswerError(err, answer, custErrMsg)
 
 	createTokensql := `
-				INSERT INTO auth_tokens (user_id, access_token, remember)
-					VALUES ($1, $2, $3) RETURNING id`
-	err = tx.QueryRow(createTokensql, user.ID, token.Token, user.Remember).Scan(&tokenID)
+				INSERT INTO auth_tokens (user_id)
+					VALUES ($1) RETURNING id`
+	err = tx.QueryRow(createTokensql, user.ID).Scan(&tokenID)
 	if err != nil {
 		tx.Rollback()
 		components.HandleAnswerError(err, answer, custErrMsg)
@@ -119,6 +145,15 @@ func storeToken(user userstore.User, answer *components.PostReqAnswer) component
 
 	// insert record into table2, referencing the first record from table1
 	_, err = tx.Exec("INSERT INTO auth_access(token_id, secret) VALUES($1, $2)", tokenID, secret)
+	if err != nil {
+		tx.Rollback()
+		components.HandleAnswerError(err, answer, custErrMsg)
+	}
+	// Create token object
+	token := components.GetToken(secret, tokenID)
+
+	// insert access_token
+	_, err = tx.Exec("UPDATE auth_tokens SET access_token=$1 WHERE id=$2", token.Token, tokenID)
 	if err != nil {
 		tx.Rollback()
 		components.HandleAnswerError(err, answer, custErrMsg)

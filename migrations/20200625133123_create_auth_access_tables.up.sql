@@ -5,7 +5,6 @@ CREATE TABLE auth_tokens (
     user_id bigint not null,
     access_token varchar null,
     refresh_token varchar null,
-    remember BOOLEAN DEFAULT FALSE,
     crtd_at timestamp with time zone NULL DEFAULT (current_timestamp AT TIME ZONE 'UTC'),
     constraint fk_users_t
      foreign key (user_id) 
