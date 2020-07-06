@@ -57,7 +57,7 @@ func Login() http.Handler {
 		if *user.Remember == true {
 			tm = 60 //86400 * 7
 		} else {
-			tm = 0
+			tm = -1
 		}
 		session.Options = &sessions.Options{
 			Path:     "/",

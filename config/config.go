@@ -24,7 +24,7 @@ type Database struct {
 
 // LocalConfig ...
 type LocalConfig struct {
-	APPKey    string `json:"app_key"`
+	APPKey    []byte `json:"app_key"`
 	DebugMode bool   `json:"debug_mode"`
 	Server    `json:"server"`
 	Database  `json:"database"`
@@ -33,7 +33,6 @@ type LocalConfig struct {
 // New - returns a new Local struct
 func New() *LocalConfig {
 	return &LocalConfig{
-		APPKey:    getEnv("APP_KEY", ""),
 		DebugMode: getEnvAsBool("DEBUG_MODE", true),
 		Server: Server{
 			Host: getEnv("SRV_HOST", ""),

@@ -7,9 +7,6 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-// APIKey ... Glopal app key
-var APIKey []byte
-
 // Db ...
 var Db *sql.DB
 

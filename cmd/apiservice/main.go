@@ -35,8 +35,7 @@ func init() {
 	}
 
 	cnf.Conf = *config.New()
-
-	cnf.APIKey = []byte(cnf.Conf.APPKey)
+	cnf.Conf.APPKey = []byte(components.RandomString(32))
 
 	// Strings for database connection
 	dbEngine := cnf.Conf.Database.Connection

@@ -10,7 +10,6 @@ import (
 	"github.com/dalais/sdku_backend/cmd/cnf"
 	"github.com/dalais/sdku_backend/store"
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gorilla/sessions"
 )
 
 // TokenObj ...
@@ -36,14 +35,14 @@ var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 	claims["exp"] = time.Now().Add(30 * 24 * time.Hour).Unix()
 
 	// Подписываем токен нашим секретным ключем
-	tokenString, _ := token.SignedString(cnf.APIKey)
+	tokenString, _ := token.SignedString(cnf.Conf.APPKey)
 
 	tokenObj := TokenObj{
 		Token: tokenString,
 	}
 	// Отдаем токен клиенту
 	SendTokenToCookie(w, "access_token", tokenString, 1*time.Hour)
-	if string(cnf.APIKey) == "" {
+	if string(cnf.Conf.APPKey) == "" {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode("API key is not found")
 	} else {
@@ -76,7 +75,7 @@ var custJwtMiddle CustJwtMiddleware
 var AppJwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 	Extractor: custJwtMiddle.FromCookie,
 	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-		return cnf.APIKey, nil
+		return cnf.Conf.APPKey, nil
 	},
 	SigningMethod: jwt.SigningMethodHS256,
 })
@@ -88,7 +87,7 @@ var UserJwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 		var secret []byte
 		var r http.Request
 		sessid, _ := custJwtMiddle.GetSessid(&r)
-		fmt.Println(sessid.Values["rmb"])
+		fmt.Println(sessid)
 		claims := token.Claims.(jwt.MapClaims)
 		id := claims["auth"]
 		// Select secret from db
@@ -117,13 +116,13 @@ func (jwtmiddleware CustJwtMiddleware) FromCookie(r *http.Request) (string, erro
 }
 
 // GetSessid ...
-func (jwtmiddleware CustJwtMiddleware) GetSessid(r *http.Request) (*sessions.Session, error) {
-	session, err := cnf.StoreSession.Get(r, "sessid")
-	if err != nil {
-		fmt.Println(err.Error())
+func (jwtmiddleware CustJwtMiddleware) GetSessid(r *http.Request) (string, error) {
+	cookie, _ := r.Cookie("sessid")
+	if cookie == nil {
+		return "", nil
 	}
 
-	return session, nil
+	return cookie.Value, nil
 }
 
 // SendTokenToCookie will apply a new cookie to the response of a http request
