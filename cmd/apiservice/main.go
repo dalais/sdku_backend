@@ -2,6 +2,8 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +16,8 @@ import (
 	"github.com/dalais/sdku_backend/handlers/auth"
 	producthandler "github.com/dalais/sdku_backend/handlers/products"
 	"github.com/dalais/sdku_backend/store"
+	userstore "github.com/dalais/sdku_backend/store/user"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/joho/godotenv"
@@ -34,7 +38,6 @@ func init() {
 	}
 
 	cnf.Conf = *config.New()
-	cnf.Conf.APPKey = []byte(components.RandomString(32))
 
 	cnf.StoreSession = sessions.NewCookieStore(cnf.Conf.APPKey)
 
@@ -72,6 +75,7 @@ func main() {
 	r.Handle("/", http.FileServer(http.Dir(cnf.ROOT+"/views/")))
 
 	sr := r.PathPrefix("/api/").Subrouter()
+	sr.Handle("/auth", components.UserJwtMiddleware.Handler(AuthValidate)).Methods("POST")
 	sr.Handle("/auth/jwt", components.GetTokenHandler).Methods("GET")
 	sr.Handle("/auth/register", auth.Registration()).Methods("POST")
 	sr.Handle("/auth/login", auth.Login()).Methods("POST")
@@ -98,4 +102,36 @@ var NotImplemented = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reques
 //  It will simply return a string with the message "API is up and running"
 var StatusHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("API is up and running"))
+})
+
+// AuthValidate ...
+var AuthValidate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	cookie, _ := r.Cookie("access_token")
+	token, _ := jwt.Parse(cookie.Value, func(token *jwt.Token) (interface{}, error) {
+		return nil, nil
+	})
+	claims, _ := token.Claims.(jwt.MapClaims)
+	data := claims["data"].(string)
+	tokenData := components.TokenData{}
+	jsData := components.DecryptStr(cnf.Conf.APPKey, data)
+	json.Unmarshal([]byte(jsData), &tokenData)
+	u := userstore.User{}
+	row := store.Db.QueryRow(`SELECT user_id FROM auth_tokens WHERE id=$1`, tokenData.AuthID).Scan(&u.ID)
+	if row != nil {
+		fmt.Println(row)
+	}
+	row = store.Db.QueryRow(`SELECT id, name, role FROM users WHERE id=$1`, u.ID).Scan(
+		&u.ID, &u.Name, &u.Role)
+	if row != nil {
+		fmt.Println(row)
+	}
+	answer := components.PostReqAnswer{}
+	user := struct {
+		User userstore.User `json:"user"`
+	}{
+		User: u,
+	}
+	answer.Data = user
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(answer)
 })

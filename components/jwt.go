@@ -95,9 +95,12 @@ var UserJwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 		var secret []byte
 		claims := token.Claims.(jwt.MapClaims)
-		id := claims["auth"]
+		data := claims["data"].(string)
+		tokenData := TokenData{}
+		jsData := DecryptStr(cnf.Conf.APPKey, data)
+		json.Unmarshal([]byte(jsData), &tokenData)
 		// Select secret from db
-		row := store.Db.QueryRow(`SELECT secret FROM auth_access WHERE token_id=$1`, id).Scan(&secret)
+		row := store.Db.QueryRow(`SELECT secret FROM auth_access WHERE token_id=$1`, tokenData.AuthID).Scan(&secret)
 		if row != nil {
 			fmt.Println(row)
 		}

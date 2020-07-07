@@ -33,6 +33,7 @@ type LocalConfig struct {
 // New - returns a new Local struct
 func New() *LocalConfig {
 	return &LocalConfig{
+		APPKey:    []byte(getEnv("APP_KEY", "")),
 		DebugMode: getEnvAsBool("DEBUG_MODE", true),
 		Server: Server{
 			Host: getEnv("SRV_HOST", ""),
