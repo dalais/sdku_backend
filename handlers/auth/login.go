@@ -5,11 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dalais/sdku_backend/cmd/cnf"
 	"github.com/dalais/sdku_backend/components"
 	"github.com/dalais/sdku_backend/store"
 	userstore "github.com/dalais/sdku_backend/store/user"
-	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -36,7 +34,6 @@ func Login() http.Handler {
 			Email:    u.Email,
 			Password: u.Password,
 			Role:     u.Role,
-			Remember: u.Remember,
 		}
 
 		// Validation fields
@@ -49,31 +46,10 @@ func Login() http.Handler {
 			token = storeToken(user, answer)
 		}
 
-		// Sessions
-		session, _ := cnf.StoreSession.Get(r, "sessid")
-		session.Values["rmb"] = user.Remember
-
-		var tm int
-		if *user.Remember == true {
-			tm = 60 //86400 * 7
-		} else {
-			tm = -1
-		}
-		session.Options = &sessions.Options{
-			Path:     "/",
-			MaxAge:   tm,
-			HttpOnly: true,
-		}
-		err := session.Save(r, w)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
 		// If everything is in order we set a notification and send the token to cookies
 		if answer.IsEmptyError() {
 			answer.Message = "Authentication is successful"
-			components.SendTokenToCookie(w, "access_token", token.Token, 1*time.Hour)
+			components.SendTokenToCookie(w, "access_token", token.Token, time.Hour*24*7)
 		}
 
 		json.NewEncoder(w).Encode(answer)

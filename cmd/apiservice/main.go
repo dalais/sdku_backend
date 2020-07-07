@@ -21,7 +21,6 @@ import (
 
 // init вызовется перед main()
 func init() {
-	cnf.StoreSession = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
 
 	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
@@ -36,6 +35,8 @@ func init() {
 
 	cnf.Conf = *config.New()
 	cnf.Conf.APPKey = []byte(components.RandomString(32))
+
+	cnf.StoreSession = sessions.NewCookieStore(cnf.Conf.APPKey)
 
 	// Strings for database connection
 	dbEngine := cnf.Conf.Database.Connection
@@ -75,7 +76,11 @@ func main() {
 	sr.Handle("/auth/register", auth.Registration()).Methods("POST")
 	sr.Handle("/auth/login", auth.Login()).Methods("POST")
 	sr.Handle("/status", components.UserJwtMiddleware.Handler(StatusHandler)).Methods("GET")
-	sr.Handle("/products", components.UserJwtMiddleware.Handler(producthandler.Index())).Methods("GET")
+
+	sr.Handle("/products", components.UserJwtMiddleware.Handler(
+		producthandler.Index(),
+	),
+	).Methods("GET")
 
 	// Static files
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/",

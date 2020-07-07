@@ -10,7 +10,4 @@ type User struct {
 	EmailVerified *string `json:"email_verified,omitempty"`
 	CrtdAt        *string `json:"crtd_at,omitempty"`
 	ChngAt        *string `json:"chng_at,omitempty"`
-
-	// For request
-	Remember *bool `json:"remember,omitempty"`
 }

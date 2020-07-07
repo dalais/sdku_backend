@@ -17,6 +17,11 @@ type TokenObj struct {
 	Token string `json:"token"`
 }
 
+// TokenData ...
+type TokenData struct {
+	AuthID int64 `json:"auth_id"`
+}
+
 // CustJwtMiddleware ...
 type CustJwtMiddleware struct {
 	*jwtmiddleware.JWTMiddleware
@@ -55,9 +60,13 @@ var GetToken = func(key string, tokenID int64) TokenObj {
 	// Create new token
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
-
+	tokenData := TokenData{}
+	tokenData.AuthID = tokenID
+	jsData, _ := json.Marshal(tokenData)
+	strData := string(jsData)
+	encrytedData := EncryptStr(cnf.Conf.APPKey, strData)
 	// Set params for payload
-	claims["auth"] = tokenID
+	claims["data"] = encrytedData
 	claims["exp"] = time.Now().Add(30 * 24 * time.Hour).Unix()
 
 	// Signing the token
@@ -85,9 +94,6 @@ var UserJwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 	Extractor: custJwtMiddle.FromCookie,
 	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 		var secret []byte
-		var r http.Request
-		sessid, _ := custJwtMiddle.GetSessid(&r)
-		fmt.Println(sessid)
 		claims := token.Claims.(jwt.MapClaims)
 		id := claims["auth"]
 		// Select secret from db
@@ -108,16 +114,6 @@ func (jwtmiddleware CustJwtMiddleware) FromCookie(r *http.Request) (string, erro
 		return "", nil
 	}
 	cookie, _ := r.Cookie("access_token")
-	if cookie == nil {
-		return "", nil
-	}
-
-	return cookie.Value, nil
-}
-
-// GetSessid ...
-func (jwtmiddleware CustJwtMiddleware) GetSessid(r *http.Request) (string, error) {
-	cookie, _ := r.Cookie("sessid")
 	if cookie == nil {
 		return "", nil
 	}
