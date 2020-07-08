@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// PostReqAnswer ...
+// ReqAnswer ...
 type ReqAnswer struct {
 	Error    int           `json:"error"`
 	Data     interface{}   `json:"data"`

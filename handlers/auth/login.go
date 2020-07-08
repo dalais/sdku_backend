@@ -52,22 +52,29 @@ func Login() http.Handler {
 		// If everything is in order we set a notification and send the token to cookies
 		if answer.IsEmptyError() {
 			session, _ := cnf.StoreSession.New(r, "sessid")
-			session.Values["remember_me"] = user.RememberMe
+			session.Options = &sessions.Options{
+				Path:     "/",
+				MaxAge:   0,
+				HttpOnly: true,
+			}
 			if *user.RememberMe == true {
+				session.Values["remember_me"] = user.RememberMe
 				session.Options = &sessions.Options{
 					Path:     "/",
 					MaxAge:   86400 * 7,
 					HttpOnly: true,
 				}
-			} else {
-				session.Options = &sessions.Options{
-					Path:     "/",
-					MaxAge:   0,
-					HttpOnly: true,
-				}
 			}
-			answer.Message = "Authentication is successful"
-			components.SendTokenToCookie(w, "access_token", token.Token, time.Hour*24*7)
+			err := session.Save(r, w)
+			if err != nil {
+				components.HandleAnswerError(err, answer, "Internal Server Error")
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if answer.IsEmptyError() {
+				answer.Message = "Authentication is successful"
+				components.SendTokenToCookie(w, "access_token", token.Token, time.Hour*24*7)
+			}
 		}
 
 		json.NewEncoder(w).Encode(answer)

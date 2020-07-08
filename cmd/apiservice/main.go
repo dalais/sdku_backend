@@ -80,7 +80,11 @@ func main() {
 	sa.Handle("/register", auth.Registration()).Methods("POST")
 	sa.Handle("/login", auth.Login()).Methods("POST")
 
-	sr.Handle("/status", components.UserJwtMiddleware.Handler(StatusHandler)).Methods("GET")
+	sr.Handle("/status", sessionMdlw(
+		components.UserJwtMiddleware.Handler(StatusHandler),
+	),
+	).Methods("GET")
+
 	sr.Handle("/products", components.UserJwtMiddleware.Handler(
 		producthandler.Index(),
 	),
@@ -130,3 +134,24 @@ var AuthValidate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(answer)
 })
+
+func sessionMdlw(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		session, _ := cnf.StoreSession.Get(r, "sessid")
+		if session.IsNew {
+			c := &http.Cookie{
+				Name:    "access_token",
+				Value:   "",
+				Path:    "/",
+				Expires: time.Unix(0, 0),
+
+				HttpOnly: true,
+			}
+
+			http.SetCookie(w, c)
+			http.Error(w, "Not authenticated", http.StatusUnauthorized)
+		} else {
+			next.ServeHTTP(w, r)
+		}
+	})
+}
