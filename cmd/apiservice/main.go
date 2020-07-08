@@ -75,12 +75,12 @@ func main() {
 	r.Handle("/", http.FileServer(http.Dir(cnf.ROOT+"/views/")))
 
 	sr := r.PathPrefix("/api/").Subrouter()
-	sr.Handle("/auth", components.UserJwtMiddleware.Handler(AuthValidate)).Methods("POST")
-	sr.Handle("/auth/jwt", components.GetTokenHandler).Methods("GET")
-	sr.Handle("/auth/register", auth.Registration()).Methods("POST")
-	sr.Handle("/auth/login", auth.Login()).Methods("POST")
-	sr.Handle("/status", components.UserJwtMiddleware.Handler(StatusHandler)).Methods("GET")
+	sa := sr.PathPrefix("/auth/").Subrouter()
+	sa.Handle("/", components.UserJwtMiddleware.Handler(AuthValidate)).Methods("POST")
+	sa.Handle("/register", auth.Registration()).Methods("POST")
+	sa.Handle("/login", auth.Login()).Methods("POST")
 
+	sr.Handle("/status", components.UserJwtMiddleware.Handler(StatusHandler)).Methods("GET")
 	sr.Handle("/products", components.UserJwtMiddleware.Handler(
 		producthandler.Index(),
 	),
@@ -125,13 +125,8 @@ var AuthValidate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 	if row != nil {
 		fmt.Println(row)
 	}
-	answer := components.PostReqAnswer{}
-	user := struct {
-		User userstore.User `json:"user"`
-	}{
-		User: u,
-	}
-	answer.Data = user
+	answer := components.ReqAnswer{}
+	answer.Data = u
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(answer)
 })

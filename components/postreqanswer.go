@@ -6,7 +6,7 @@ import (
 )
 
 // PostReqAnswer ...
-type PostReqAnswer struct {
+type ReqAnswer struct {
 	Error    int           `json:"error"`
 	Data     interface{}   `json:"data"`
 	Message  string        `json:"message"`
@@ -14,7 +14,7 @@ type PostReqAnswer struct {
 }
 
 // IsEmptyData ...
-func (pra *PostReqAnswer) IsEmptyData() bool {
+func (pra *ReqAnswer) IsEmptyData() bool {
 	data, err := json.Marshal(pra.Data)
 	if err != nil {
 		fmt.Println(err)
@@ -23,6 +23,6 @@ func (pra *PostReqAnswer) IsEmptyData() bool {
 }
 
 // IsEmptyError ...
-func (pra *PostReqAnswer) IsEmptyError() bool {
+func (pra *ReqAnswer) IsEmptyError() bool {
 	return pra.Error == 0
 }

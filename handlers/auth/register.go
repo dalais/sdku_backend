@@ -18,7 +18,7 @@ import (
 func Registration() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var u *userstore.User
-		var answer *components.PostReqAnswer
+		var answer *components.ReqAnswer
 
 		// Handling post request
 		answer = components.PostReqHandler(&u, w, r)
@@ -71,10 +71,10 @@ func Registration() http.Handler {
 }
 
 // registerValidation ...
-func registerValidation(model interface{}, answer *components.PostReqAnswer) *components.PostReqAnswer {
+func registerValidation(model interface{}, answer *components.ReqAnswer) *components.ReqAnswer {
 	if answer.Error == 0 {
 		// Set empty answer struct
-		answer = &components.PostReqAnswer{}
+		answer = &components.ReqAnswer{}
 
 		// Initialization new validation instance
 		v := validator.New()

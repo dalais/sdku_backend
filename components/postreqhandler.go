@@ -13,9 +13,9 @@ import (
 )
 
 // PostReqHandler ...
-func PostReqHandler(model interface{}, w http.ResponseWriter, r *http.Request) *PostReqAnswer {
+func PostReqHandler(model interface{}, w http.ResponseWriter, r *http.Request) *ReqAnswer {
 	var errMsg string
-	var answer PostReqAnswer
+	var answer ReqAnswer
 	if r.Header.Get("Content-Type") != "" {
 		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
 		if value != "application/json" {

@@ -20,7 +20,7 @@ func Unmarshal(data interface{}, relate interface{}) {
 }
 
 // HandleAnswerError ...
-func HandleAnswerError(err error, answer *PostReqAnswer, msg string) {
+func HandleAnswerError(err error, answer *ReqAnswer, msg string) {
 	if err != nil {
 		errM := struct {
 			Error string `json:"error"`

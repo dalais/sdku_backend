@@ -5,9 +5,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dalais/sdku_backend/cmd/cnf"
 	"github.com/dalais/sdku_backend/components"
 	"github.com/dalais/sdku_backend/store"
 	userstore "github.com/dalais/sdku_backend/store/user"
+	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -26,14 +28,15 @@ func (m *LoginError) Error() string {
 func Login() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var u *userstore.User
-		var answer *components.PostReqAnswer
+		var answer *components.ReqAnswer
 		// Handle http request
 		answer = components.PostReqHandler(&u, w, r)
 
 		user := userstore.User{
-			Email:    u.Email,
-			Password: u.Password,
-			Role:     u.Role,
+			Email:      u.Email,
+			Password:   u.Password,
+			Role:       u.Role,
+			RememberMe: u.RememberMe,
 		}
 
 		// Validation fields
@@ -48,6 +51,21 @@ func Login() http.Handler {
 
 		// If everything is in order we set a notification and send the token to cookies
 		if answer.IsEmptyError() {
+			session, _ := cnf.StoreSession.New(r, "sessid")
+			session.Values["remember_me"] = user.RememberMe
+			if *user.RememberMe == true {
+				session.Options = &sessions.Options{
+					Path:     "/",
+					MaxAge:   86400 * 7,
+					HttpOnly: true,
+				}
+			} else {
+				session.Options = &sessions.Options{
+					Path:     "/",
+					MaxAge:   0,
+					HttpOnly: true,
+				}
+			}
 			answer.Message = "Authentication is successful"
 			components.SendTokenToCookie(w, "access_token", token.Token, time.Hour*24*7)
 		}
@@ -57,15 +75,15 @@ func Login() http.Handler {
 }
 
 // LoginValidation ...
-func loginValidation(user userstore.User, answer *components.PostReqAnswer) (
-	userstore.User, *components.PostReqAnswer) {
+func loginValidation(user userstore.User, answer *components.ReqAnswer) (
+	userstore.User, *components.ReqAnswer) {
 	if answer.Error == 0 {
 		// new error struct for answer.ErrMesgs
 		errMsgs := struct {
 			Error string `json:"error"`
 		}{}
 		// New answer struct
-		answer = &components.PostReqAnswer{}
+		answer = &components.ReqAnswer{}
 
 		// Getting the password sent in the request
 		password := []byte(user.Password)
@@ -100,7 +118,7 @@ func loginValidation(user userstore.User, answer *components.PostReqAnswer) (
 }
 
 // TODO ...
-func storeToken(user userstore.User, answer *components.PostReqAnswer) components.TokenObj {
+func storeToken(user userstore.User, answer *components.ReqAnswer) components.TokenObj {
 
 	var tokenID int64
 	// Create sercret string

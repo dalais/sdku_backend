@@ -10,4 +10,6 @@ type User struct {
 	EmailVerified *string `json:"email_verified,omitempty"`
 	CrtdAt        *string `json:"crtd_at,omitempty"`
 	ChngAt        *string `json:"chng_at,omitempty"`
+
+	RememberMe *bool `json:"remember_me"`
 }
