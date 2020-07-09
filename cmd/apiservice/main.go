@@ -17,7 +17,6 @@ import (
 	producthandler "github.com/dalais/sdku_backend/handlers/products"
 	"github.com/dalais/sdku_backend/store"
 	userstore "github.com/dalais/sdku_backend/store/user"
-	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/joho/godotenv"
@@ -67,10 +66,7 @@ func init() {
 	store.Db = gl.Db
 
 	// Redis connection
-	gl.Rdb, err = redis.Dial("tcp", gl.Conf.Redis.Host+gl.Conf.Redis.Port)
-	if err != nil {
-		log.Fatal(err)
-	}
+	gl.InitRPool()
 }
 
 func main() {
