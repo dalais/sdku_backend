@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/dalais/sdku_backend/cmd/cnf"
+	gl "github.com/dalais/sdku_backend/cmd/global"
 )
 
 // Unmarshal ...
@@ -25,11 +25,11 @@ func HandleAnswerError(err error, answer *ReqAnswer, msg string) {
 		errM := struct {
 			Error string `json:"error"`
 		}{}
-		if cnf.Conf.DebugMode {
+		if gl.Conf.DebugMode {
 			errM.Error = err.Error()
 			fmt.Println(err)
 		}
-		if !cnf.Conf.DebugMode {
+		if !gl.Conf.DebugMode {
 			errM.Error = msg
 		}
 

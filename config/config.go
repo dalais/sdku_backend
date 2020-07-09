@@ -22,17 +22,25 @@ type Database struct {
 	Pass       string `json:"pass"`
 }
 
-// LocalConfig ...
-type LocalConfig struct {
+// Redis ...
+type Redis struct {
+	Host string `json:"host"`
+	Port string `json:"port"`
+	Pass string `json:"pass"`
+}
+
+// ENV ...
+type ENV struct {
 	APPKey    []byte `json:"app_key"`
 	DebugMode bool   `json:"debug_mode"`
 	Server    `json:"server"`
 	Database  `json:"database"`
+	Redis     `json:"redis"`
 }
 
 // New - returns a new Local struct
-func New() *LocalConfig {
-	return &LocalConfig{
+func New() *ENV {
+	return &ENV{
 		APPKey:    []byte(getEnv("APP_KEY", "")),
 		DebugMode: getEnvAsBool("DEBUG_MODE", true),
 		Server: Server{
@@ -46,6 +54,11 @@ func New() *LocalConfig {
 			Db:         getEnv("DB_DATABASE", ""),
 			User:       getEnv("DB_USERNAME", ""),
 			Pass:       getEnv("DB_PASSWORD", ""),
+		},
+		Redis: Redis{
+			Host: getEnv("REDIS_HOST", "localhost"),
+			Port: getEnv("REDIS_PORT", "6379"),
+			Pass: getEnv("REDIS_PASS", ""),
 		},
 	}
 }

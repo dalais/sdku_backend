@@ -8,6 +8,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-playground/validator/v10 v10.3.0
 	github.com/golang/gddo v0.0.0-20200611223618-a4829ef13274
+	github.com/gomodule/redigo v1.8.2
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/sessions v1.2.0
 	github.com/joho/godotenv v1.3.0

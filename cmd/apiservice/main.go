@@ -10,14 +10,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dalais/sdku_backend/cmd/cnf"
+	gl "github.com/dalais/sdku_backend/cmd/global"
 	"github.com/dalais/sdku_backend/components"
 	"github.com/dalais/sdku_backend/config"
 	"github.com/dalais/sdku_backend/handlers/auth"
 	producthandler "github.com/dalais/sdku_backend/handlers/products"
 	"github.com/dalais/sdku_backend/store"
 	userstore "github.com/dalais/sdku_backend/store/user"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/joho/godotenv"
@@ -30,41 +30,47 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cnf.ROOT = dir
+	gl.ROOT = dir
 
 	// Load environment variables from .env
-	if err := godotenv.Load(cnf.ROOT + "/.env"); err != nil {
+	if err := godotenv.Load(gl.ROOT + "/.env"); err != nil {
 		log.Print("No .env file found")
 	}
 
-	cnf.Conf = *config.New()
+	gl.Conf = *config.New()
 
-	cnf.StoreSession = sessions.NewCookieStore(cnf.Conf.APPKey)
+	gl.StoreSession = sessions.NewCookieStore(gl.Conf.APPKey)
 
 	// Strings for database connection
-	dbEngine := cnf.Conf.Database.Connection
-	dbURL := cnf.Conf.Database.Connection + "://" +
-		cnf.Conf.Database.User + ":" +
-		cnf.Conf.Database.Pass + "@" +
-		cnf.Conf.Database.Host + "/" +
-		cnf.Conf.Database.Db
+	dbEngine := gl.Conf.Database.Connection
+	dbURL := gl.Conf.Database.Connection + "://" +
+		gl.Conf.Database.User + ":" +
+		gl.Conf.Database.Pass + "@" +
+		gl.Conf.Database.Host + "/" +
+		gl.Conf.Database.Db
 
 	// Database connection
-	cnf.Db, err = sql.Open(dbEngine, dbURL)
+	gl.Db, err = sql.Open(dbEngine, dbURL)
 	if err != nil {
 		log.Panic(err)
 	}
 
-	if err = cnf.Db.Ping(); err != nil {
+	if err = gl.Db.Ping(); err != nil {
 		log.Panic(err)
 	}
 
 	// Configuring the number of database connections
 	// for more information https://www.alexedwards.net/blog/configuring-sqldb
-	cnf.Db.SetMaxOpenConns(25)
-	cnf.Db.SetMaxIdleConns(25)
-	cnf.Db.SetConnMaxLifetime(5 * time.Minute)
-	store.Db = cnf.Db
+	gl.Db.SetMaxOpenConns(25)
+	gl.Db.SetMaxIdleConns(25)
+	gl.Db.SetConnMaxLifetime(5 * time.Minute)
+	store.Db = gl.Db
+
+	// Redis connection
+	gl.Rdb, err = redis.Dial("tcp", gl.Conf.Redis.Host+gl.Conf.Redis.Port)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
@@ -72,7 +78,7 @@ func main() {
 	r := mux.NewRouter()
 
 	// Default page.
-	r.Handle("/", http.FileServer(http.Dir(cnf.ROOT+"/views/")))
+	r.Handle("/", http.FileServer(http.Dir(gl.ROOT+"/views/")))
 
 	sr := r.PathPrefix("/api/").Subrouter()
 	sa := sr.PathPrefix("/auth/").Subrouter()
@@ -92,9 +98,9 @@ func main() {
 
 	// Static files
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/",
-		http.FileServer(http.Dir(cnf.ROOT+"/static/"))))
+		http.FileServer(http.Dir(gl.ROOT+"/static/"))))
 
-	http.ListenAndServe(":"+cnf.Conf.Server.Port, r)
+	http.ListenAndServe(":"+gl.Conf.Server.Port, r)
 }
 
 // NotImplemented ...
@@ -110,21 +116,10 @@ var StatusHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 
 // AuthValidate ...
 var AuthValidate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	cookie, _ := r.Cookie("access_token")
-	token, _ := jwt.Parse(cookie.Value, func(token *jwt.Token) (interface{}, error) {
-		return nil, nil
-	})
-	claims, _ := token.Claims.(jwt.MapClaims)
-	data := claims["data"].(string)
-	tokenData := components.TokenData{}
-	jsData := components.DecryptStr(cnf.Conf.APPKey, data)
-	json.Unmarshal([]byte(jsData), &tokenData)
+	cookie, _ := r.Cookie("_token")
+	tokenData := components.TokenPayload(cookie.Value)
 	u := userstore.User{}
-	row := store.Db.QueryRow(`SELECT user_id FROM auth_tokens WHERE id=$1`, tokenData.AuthID).Scan(&u.ID)
-	if row != nil {
-		fmt.Println(row)
-	}
-	row = store.Db.QueryRow(`SELECT id, name, role FROM users WHERE id=$1`, u.ID).Scan(
+	row := store.Db.QueryRow(`SELECT id, name, role FROM users WHERE id=$1`, tokenData.UserID).Scan(
 		&u.ID, &u.Name, &u.Role)
 	if row != nil {
 		fmt.Println(row)
@@ -137,19 +132,24 @@ var AuthValidate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 
 func sessionMdlw(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session, _ := cnf.StoreSession.Get(r, "sessid")
+		session, _ := gl.StoreSession.Get(r, "sessid")
+		authHeader := r.Header.Get("Cookie")
+		cookie, _ := r.Cookie("_token")
 		if session.IsNew {
 			c := &http.Cookie{
-				Name:    "access_token",
+				Name:    "_token",
 				Value:   "",
 				Path:    "/",
 				Expires: time.Unix(0, 0),
 
 				HttpOnly: true,
 			}
-
 			http.SetCookie(w, c)
-			http.Error(w, "Not authenticated", http.StatusUnauthorized)
+			if authHeader != "" && cookie != nil {
+				tokenData := components.TokenPayload(cookie.Value)
+				_ = gl.Db.QueryRow(`DELETE FROM auth_access WHERE token_id=$1`, tokenData.AuthID)
+
+			}
 		} else {
 			next.ServeHTTP(w, r)
 		}

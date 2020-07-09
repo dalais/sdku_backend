@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dalais/sdku_backend/cmd/cnf"
+	gl "github.com/dalais/sdku_backend/cmd/global"
 	"github.com/dalais/sdku_backend/components"
 	"github.com/dalais/sdku_backend/store"
 	userstore "github.com/dalais/sdku_backend/store/user"
@@ -51,7 +51,7 @@ func Login() http.Handler {
 
 		// If everything is in order we set a notification and send the token to cookies
 		if answer.IsEmptyError() {
-			session, _ := cnf.StoreSession.New(r, "sessid")
+			session, _ := gl.StoreSession.New(r, "sessid")
 			session.Options = &sessions.Options{
 				Path:     "/",
 				MaxAge:   0,
@@ -73,7 +73,7 @@ func Login() http.Handler {
 			}
 			if answer.IsEmptyError() {
 				answer.Message = "Authentication is successful"
-				components.SendTokenToCookie(w, "access_token", token.Token, time.Hour*24*7)
+				components.SendTokenToCookie(w, "_token", token.Token, time.Hour*24*7)
 			}
 		}
 
@@ -151,7 +151,7 @@ func storeToken(user userstore.User, answer *components.ReqAnswer) components.To
 		components.HandleAnswerError(err, answer, custErrMsg)
 	}
 	// Create token object
-	token := components.GetToken(secret, tokenID)
+	token := components.GetToken(secret, tokenID, user.ID)
 
 	// insert access_token
 	_, err = tx.Exec("UPDATE auth_tokens SET access_token=$1 WHERE id=$2", token.Token, tokenID)

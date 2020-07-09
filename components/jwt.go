@@ -7,7 +7,7 @@ import (
 	"time"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
-	"github.com/dalais/sdku_backend/cmd/cnf"
+	gl "github.com/dalais/sdku_backend/cmd/global"
 	"github.com/dalais/sdku_backend/store"
 	"github.com/dgrijalva/jwt-go"
 )
@@ -20,6 +20,7 @@ type TokenObj struct {
 // TokenData ...
 type TokenData struct {
 	AuthID int64 `json:"auth_id"`
+	UserID int64 `json:"user_id"`
 }
 
 // CustJwtMiddleware ...
@@ -40,14 +41,14 @@ var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 	claims["exp"] = time.Now().Add(30 * 24 * time.Hour).Unix()
 
 	// Подписываем токен нашим секретным ключем
-	tokenString, _ := token.SignedString(cnf.Conf.APPKey)
+	tokenString, _ := token.SignedString(gl.Conf.APPKey)
 
 	tokenObj := TokenObj{
 		Token: tokenString,
 	}
 	// Отдаем токен клиенту
-	SendTokenToCookie(w, "access_token", tokenString, 1*time.Hour)
-	if string(cnf.Conf.APPKey) == "" {
+	SendTokenToCookie(w, "_token", tokenString, 1*time.Hour)
+	if string(gl.Conf.APPKey) == "" {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode("API key is not found")
 	} else {
@@ -56,15 +57,16 @@ var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
 })
 
 // GetToken for login proccess
-var GetToken = func(key string, tokenID int64) TokenObj {
+var GetToken = func(key string, tokenID int64, userID int64) TokenObj {
 	// Create new token
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 	tokenData := TokenData{}
 	tokenData.AuthID = tokenID
+	tokenData.UserID = userID
 	jsData, _ := json.Marshal(tokenData)
 	strData := string(jsData)
-	encrytedData := EncryptStr(cnf.Conf.APPKey, strData)
+	encrytedData := EncryptStr(gl.Conf.APPKey, strData)
 	// Set params for payload
 	claims["data"] = encrytedData
 	claims["exp"] = time.Now().Add(30 * 24 * time.Hour).Unix()
@@ -84,7 +86,7 @@ var custJwtMiddle CustJwtMiddleware
 var AppJwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 	Extractor: custJwtMiddle.FromCookie,
 	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-		return cnf.Conf.APPKey, nil
+		return gl.Conf.APPKey, nil
 	},
 	SigningMethod: jwt.SigningMethodHS256,
 })
@@ -97,7 +99,7 @@ var UserJwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 		claims := token.Claims.(jwt.MapClaims)
 		data := claims["data"].(string)
 		tokenData := TokenData{}
-		jsData := DecryptStr(cnf.Conf.APPKey, data)
+		jsData := DecryptStr(gl.Conf.APPKey, data)
 		json.Unmarshal([]byte(jsData), &tokenData)
 		// Select secret from db
 		row := store.Db.QueryRow(`SELECT secret FROM auth_access WHERE token_id=$1`, tokenData.AuthID).Scan(&secret)
@@ -116,7 +118,7 @@ func (jwtmiddleware CustJwtMiddleware) FromCookie(r *http.Request) (string, erro
 	if authHeader == "" {
 		return "", nil
 	}
-	cookie, _ := r.Cookie("access_token")
+	cookie, _ := r.Cookie("_token")
 	if cookie == nil {
 		return "", nil
 	}
@@ -136,4 +138,18 @@ func SendTokenToCookie(w http.ResponseWriter, name, value string, ttl time.Durat
 		Path:     "/",
 	}
 	http.SetCookie(w, &cookie)
+}
+
+// TokenPayload - get token from cookie and parse data
+func TokenPayload(cookieVal string) TokenData {
+	token, _ := jwt.Parse(cookieVal, func(token *jwt.Token) (interface{}, error) {
+		return nil, nil
+	})
+	claims, _ := token.Claims.(jwt.MapClaims)
+	data := claims["data"].(string)
+	tokenData := TokenData{}
+	jsData := DecryptStr(gl.Conf.APPKey, data)
+	json.Unmarshal([]byte(jsData), &tokenData)
+
+	return tokenData
 }
