@@ -17,6 +17,7 @@ import (
 	producthandler "github.com/dalais/sdku_backend/handlers/products"
 	"github.com/dalais/sdku_backend/store"
 	userstore "github.com/dalais/sdku_backend/store/user"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/joho/godotenv"
@@ -78,7 +79,7 @@ func main() {
 
 	sr := r.PathPrefix("/api/").Subrouter()
 	sa := sr.PathPrefix("/auth/").Subrouter()
-	sa.Handle("/", components.UserJwtMiddleware.Handler(AuthValidate)).Methods("POST")
+	sa.Handle("/verify", components.UserJwtMiddleware.Handler(AuthValidate)).Methods("GET")
 	sa.Handle("/register", auth.Registration()).Methods("POST")
 	sa.Handle("/login", auth.Login()).Methods("POST")
 
@@ -96,7 +97,16 @@ func main() {
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/",
 		http.FileServer(http.Dir(gl.ROOT+"/static/"))))
 
-	http.ListenAndServe(":"+gl.Conf.Server.Port, r)
+	//credentialsOK := handlers.AllowCredentials()
+	headersOK := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
+	originsOK := handlers.AllowedOrigins([]string{"*"})
+	methodsOK := handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS", "DELETE", "PUT"})
+	http.ListenAndServe(":"+gl.Conf.Server.Port, handlers.CORS(
+		//credentialsOK,
+		headersOK,
+		originsOK,
+		methodsOK,
+	)(r))
 }
 
 // NotImplemented ...
