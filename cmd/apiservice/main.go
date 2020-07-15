@@ -78,6 +78,7 @@ func main() {
 	r.Handle("/", http.FileServer(http.Dir(gl.ROOT+"/views/")))
 
 	sr := r.PathPrefix("/api/").Subrouter()
+
 	sa := sr.PathPrefix("/auth/").Subrouter()
 	sa.Handle("/verify", components.UserJwtMiddleware.Handler(AuthValidate)).Methods("GET")
 	sa.Handle("/register", auth.Registration()).Methods("POST")
@@ -97,15 +98,11 @@ func main() {
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/",
 		http.FileServer(http.Dir(gl.ROOT+"/static/"))))
 
-	credentialsOK := handlers.AllowCredentials()
-	headersOK := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
-	originsOK := handlers.AllowedOrigins(gl.Conf.Front.Host)
-	methodsOK := handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS", "DELETE", "PUT"})
 	http.ListenAndServe(":"+gl.Conf.Server.Port, handlers.CORS(
-		credentialsOK,
-		headersOK,
-		originsOK,
-		methodsOK,
+		handlers.AllowCredentials(),
+		handlers.AllowedHeaders([]string{"X-Requested-With", " X-HTTP-Method-Override", "Content-Type"}),
+		handlers.AllowedOrigins(gl.Conf.Front.Host),
+		handlers.AllowedMethods([]string{"GET", "POST", "DELETE", "PUT", "OPTIONS"}),
 	)(r))
 }
 

@@ -37,6 +37,7 @@ type Redis struct {
 // ENV ...
 type ENV struct {
 	APPKey    []byte `json:"app_key"`
+	CSRFKey   []byte `json:"csrf_key"`
 	DebugMode bool   `json:"debug_mode"`
 	Server    `json:"server"`
 	Front     `json:"front"`
@@ -48,13 +49,14 @@ type ENV struct {
 func New() *ENV {
 	return &ENV{
 		APPKey:    []byte(getEnv("APP_KEY", "")),
+		CSRFKey:   []byte(getEnv("CSRF_KEY", "")),
 		DebugMode: getEnvAsBool("DEBUG_MODE", true),
 		Server: Server{
 			Host: getEnv("SRV_HOST", ""),
 			Port: getEnv("SRV_PORT", ""),
 		},
 		Front: Front{
-			Host: getEnvAsSlice("FRONT_HOST", []string{"http://locahost"}, ";"),
+			Host: getEnvAsSlice("FRONT_HOST", []string{}, ";"),
 		},
 		Database: Database{
 			Connection: getEnv("DB_CONNECTION", "postgres"),
