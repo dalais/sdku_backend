@@ -97,12 +97,12 @@ func main() {
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/",
 		http.FileServer(http.Dir(gl.ROOT+"/static/"))))
 
-	//credentialsOK := handlers.AllowCredentials()
+	credentialsOK := handlers.AllowCredentials()
 	headersOK := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
-	originsOK := handlers.AllowedOrigins([]string{"*"})
+	originsOK := handlers.AllowedOrigins(gl.Conf.Front.Host)
 	methodsOK := handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS", "DELETE", "PUT"})
 	http.ListenAndServe(":"+gl.Conf.Server.Port, handlers.CORS(
-		//credentialsOK,
+		credentialsOK,
 		headersOK,
 		originsOK,
 		methodsOK,

@@ -12,6 +12,11 @@ type Server struct {
 	Port string `json:"port"`
 }
 
+// Front configs
+type Front struct {
+	Host []string `json:"host"`
+}
+
 // Database configs
 type Database struct {
 	Connection string `json:"connection"`
@@ -34,6 +39,7 @@ type ENV struct {
 	APPKey    []byte `json:"app_key"`
 	DebugMode bool   `json:"debug_mode"`
 	Server    `json:"server"`
+	Front     `json:"front"`
 	Database  `json:"database"`
 	Redis     `json:"redis"`
 }
@@ -46,6 +52,9 @@ func New() *ENV {
 		Server: Server{
 			Host: getEnv("SRV_HOST", ""),
 			Port: getEnv("SRV_PORT", ""),
+		},
+		Front: Front{
+			Host: getEnvAsSlice("FRONT_HOST", []string{"http://locahost"}, ";"),
 		},
 		Database: Database{
 			Connection: getEnv("DB_CONNECTION", "postgres"),
