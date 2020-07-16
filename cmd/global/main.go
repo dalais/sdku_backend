@@ -3,7 +3,6 @@ package gl
 import (
 	"database/sql"
 	"log"
-	"os"
 
 	"github.com/dalais/sdku_backend/config"
 	"github.com/gomodule/redigo/redis"
@@ -34,9 +33,10 @@ func InitRPool() {
 			conn, err := redis.Dial("tcp", Conf.Redis.Host+":"+Conf.Redis.Port)
 			if err != nil {
 				log.Printf("ERROR: fail init redis pool: %s", err.Error())
-				os.Exit(1)
 			}
-			conn.Do("AUTH", Conf.Redis.Pass)
+			if err == nil {
+				conn.Do("AUTH", Conf.Redis.Pass)
+			}
 			return conn, err
 		},
 	}

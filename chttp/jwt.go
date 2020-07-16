@@ -21,6 +21,13 @@ type TokenObj struct {
 	Secret  string `json:"secret"`
 }
 
+// TokenRedis ...
+type TokenRedis struct {
+	UserID int64  `redis:"user_id" json:"user_id"`
+	Role   int    `redis:"role" json:"role"`
+	Token  string `redis:"token" json:"token"`
+}
+
 // NewTokenObj ...
 func NewTokenObj() TokenObj {
 	tObj := TokenObj{}
@@ -71,7 +78,7 @@ var custJwtMiddle CustJwtMiddleware
 
 // JwtMdlw ...
 var JwtMdlw = jwtmiddleware.New(jwtmiddleware.Options{
-	Extractor: custJwtMiddle.FromCookie,
+	Extractor: jwtmiddleware.FromAuthHeader,
 	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 		var secret []byte
 		claims := token.Claims.(jwt.MapClaims)
@@ -84,7 +91,7 @@ var JwtMdlw = jwtmiddleware.New(jwtmiddleware.Options{
 		defer conn.Close()
 		// Get secret from redis
 		redisSecret, err := redis.String(conn.Do("HGET", "access:"+fmt.Sprintf("%v", tokenData.TokenID), "secret"))
-		if err == nil || err != redis.ErrNil {
+		if err == nil && redisSecret != "" {
 			secret = []byte(redisSecret)
 		} else {
 			// Select secret from db

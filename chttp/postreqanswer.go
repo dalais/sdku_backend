@@ -8,7 +8,7 @@ import (
 // ReqAnswer ...
 type ReqAnswer struct {
 	Error    int           `json:"error"`
-	Data     interface{}   `json:"data"`
+	Data     []interface{} `json:"data"`
 	Message  string        `json:"message"`
 	ErrMesgs []interface{} `json:"err_mesgs"`
 }

@@ -16,7 +16,7 @@ import (
 	"github.com/dalais/sdku_backend/handlers/auth"
 	producthandler "github.com/dalais/sdku_backend/handlers/products"
 	"github.com/dalais/sdku_backend/store"
-	userstore "github.com/dalais/sdku_backend/store/user"
+	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -80,8 +80,10 @@ func main() {
 
 	sr := r.PathPrefix("/api/").Subrouter()
 
+	/* csrfMiddleware := csrf.Protect(gl.Conf.CSRFKey, csrf.TrustedOrigins(gl.Conf.Front.Host))
+	sr.Use(csrfMiddleware) */
 	sa := sr.PathPrefix("/auth/").Subrouter()
-	sa.Handle("/verify", authMdlw(AuthValidate)).Methods("GET")
+	sa.Handle("/session", SessionValidate).Methods("POST")
 	sa.Handle("/register", auth.Registration()).Methods("POST")
 	sa.Handle("/login", auth.Login()).Methods("POST")
 
@@ -98,7 +100,7 @@ func main() {
 	// CORS
 	http.ListenAndServe(":"+gl.Conf.Server.Port, handlers.CORS(
 		handlers.AllowCredentials(),
-		handlers.AllowedHeaders([]string{"X-Requested-With", " X-HTTP-Method-Override", "Content-Type"}),
+		handlers.AllowedHeaders([]string{"X-Requested-With", "X-CSRF-Token", "Authorization", "Content-Type"}),
 		handlers.AllowedOrigins(gl.Conf.Front.Host),
 		handlers.AllowedMethods([]string{"GET", "POST", "DELETE", "PUT", "OPTIONS"}),
 	)(r))
@@ -115,25 +117,56 @@ var StatusHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	w.Write([]byte("API is up and running"))
 })
 
-// AuthValidate ...
-var AuthValidate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	cookie, _ := r.Cookie("_token")
-	tokenData := chttp.TokenPayload(cookie.Value)
-	u := userstore.User{}
-	row := store.Db.QueryRow(`SELECT id, name, role FROM users WHERE id=$1`, tokenData.UserID).Scan(
-		&u.ID, &u.Name, &u.Role)
-	if row != nil {
-		fmt.Println(row)
+// SessionValidate ...
+var SessionValidate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	authData := chttp.NewSessionData()
+	//authData.CSRF = csrf.Token(r)
+
+	session, _ := gl.StoreSession.Get(r, "sessid")
+
+	if !session.IsNew && session.Values["auth"] == true {
+		conn := gl.RPool.Get()
+		defer conn.Close()
+		// Get secret from redis
+		redisToken := chttp.TokenRedis{}
+		values, err := redis.Values(conn.Do("HGETALL", "token:"+fmt.Sprintf("%v", session.Values["token_id"])))
+		if err == nil && len(values) > 0 {
+			err := redis.ScanStruct(values, &redisToken)
+			if err == nil {
+				authData.Token = redisToken.Token
+				authData.Role = redisToken.Role
+				authData.UserID = redisToken.UserID
+				authData.IsLogged = true
+			} else {
+				log.Printf("Error scanning the data token from the redis. Error: %v", err.Error())
+			}
+		}
+
+		if authData.IsLogged == false {
+			err := store.Db.QueryRow("SELECT access_token, user_id FROM auth_tokens WHERE id=$1", fmt.Sprintf("%v", session.Values["token_id"])).
+				Scan(&authData.Token, &authData.UserID)
+			if err != nil {
+				log.Printf("Token not found, error: %v", err)
+			}
+			err = store.Db.QueryRow("SELECT role FROM users WHERE id=$1", fmt.Sprintf("%v", session.Values["user_id"])).Scan(&authData.Role)
+			if err != nil {
+				log.Printf("User not found, error: %v", err)
+			}
+			if err == nil {
+				authData.IsLogged = true
+			}
+		}
 	}
-	answer := chttp.ReqAnswer{}
-	answer.Data = u
+
+	//w.Header().Set("X-CSRF-Token", csrf.Token(r))
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(answer)
+	json.NewEncoder(w).Encode(authData)
 })
 
 func authMdlw(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		jwt := chttp.JwtMdlw.Handler(next)
+		//w.Header().Set("X-CSRF-Token", csrf.Token(r))
 		jwt.ServeHTTP(w, r)
 	})
 }

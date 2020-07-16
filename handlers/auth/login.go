@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/dalais/sdku_backend/chttp"
 	gl "github.com/dalais/sdku_backend/cmd/global"
@@ -54,6 +53,9 @@ func Login() http.Handler {
 		// If everything is in order we set a notification and send the token to cookies
 		if answer.IsEmptyError() {
 			session, _ := gl.StoreSession.New(r, "sessid")
+			session.Values["auth"] = true
+			session.Values["user_id"] = user.ID
+			session.Values["token_id"] = token.ID
 			session.Options = &sessions.Options{
 				Path:     "/",
 				MaxAge:   0,
@@ -75,7 +77,12 @@ func Login() http.Handler {
 			}
 			if answer.IsEmptyError() {
 				answer.Message = "Authentication is successful"
-				chttp.SendTokenToCookie(w, "_token", token.Token, time.Hour*24*7)
+				sessionData := chttp.NewSessionData()
+				sessionData.IsLogged = true
+				sessionData.UserID = user.ID
+				sessionData.Token = token.Token
+				sessionData.Role = user.Role
+				answer.Data = append(answer.Data, sessionData)
 			}
 		}
 
@@ -119,7 +126,7 @@ func loginValidation(user userstore.User, answer *chttp.ReqAnswer) (
 
 		// If there are no errors, we set user data for the answer.Data field
 		if len(answer.ErrMesgs) == 0 {
-			answer.Data = user
+			answer.Data = append(answer.Data, user)
 		}
 	}
 
