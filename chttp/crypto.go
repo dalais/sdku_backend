@@ -1,4 +1,4 @@
-package components
+package chttp
 
 import (
 	"crypto/aes"

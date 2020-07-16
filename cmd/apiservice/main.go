@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dalais/sdku_backend/chttp"
 	gl "github.com/dalais/sdku_backend/cmd/global"
-	"github.com/dalais/sdku_backend/components"
 	"github.com/dalais/sdku_backend/config"
 	"github.com/dalais/sdku_backend/handlers/auth"
 	producthandler "github.com/dalais/sdku_backend/handlers/products"
@@ -78,22 +78,19 @@ func main() {
 	// Init router
 	r := mux.NewRouter()
 
-	// Default page.
-	r.Handle("/", http.FileServer(http.Dir(gl.ROOT+"/views/")))
-
 	sr := r.PathPrefix("/api/").Subrouter()
 
 	sa := sr.PathPrefix("/auth/").Subrouter()
-	sa.Handle("/verify", components.JwtMdlw.Handler(AuthValidate)).Methods("GET")
+	sa.Handle("/verify", chttp.JwtMdlw.Handler(AuthValidate)).Methods("GET")
 	sa.Handle("/register", auth.Registration()).Methods("POST")
 	sa.Handle("/login", auth.Login()).Methods("POST")
 
 	sr.Handle("/status", sessionMdlw(
-		components.JwtMdlw.Handler(StatusHandler),
+		chttp.JwtMdlw.Handler(StatusHandler),
 	),
 	).Methods("GET")
 
-	sr.Handle("/products", components.JwtMdlw.Handler(
+	sr.Handle("/products", chttp.JwtMdlw.Handler(
 		producthandler.Index(),
 	),
 	).Methods("GET")
@@ -121,14 +118,14 @@ var StatusHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 // AuthValidate ...
 var AuthValidate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	cookie, _ := r.Cookie("_token")
-	tokenData := components.TokenPayload(cookie.Value)
+	tokenData := chttp.TokenPayload(cookie.Value)
 	u := userstore.User{}
 	row := store.Db.QueryRow(`SELECT id, name, role FROM users WHERE id=$1`, tokenData.UserID).Scan(
 		&u.ID, &u.Name, &u.Role)
 	if row != nil {
 		fmt.Println(row)
 	}
-	answer := components.ReqAnswer{}
+	answer := chttp.ReqAnswer{}
 	answer.Data = u
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(answer)
@@ -150,7 +147,7 @@ func sessionMdlw(next http.Handler) http.Handler {
 			}
 			http.SetCookie(w, c)
 			if authHeader != "" && cookie != nil {
-				tokenData := components.TokenPayload(cookie.Value)
+				tokenData := chttp.TokenPayload(cookie.Value)
 				_ = gl.Db.QueryRow(`DELETE FROM auth_access WHERE token_id=$1`, tokenData.TokenID)
 
 			}

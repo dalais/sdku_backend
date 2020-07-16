@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/badoux/checkmail"
-	"github.com/dalais/sdku_backend/components"
+	"github.com/dalais/sdku_backend/chttp"
 	"github.com/dalais/sdku_backend/store"
 	userstore "github.com/dalais/sdku_backend/store/user"
 	"github.com/go-playground/validator/v10"
@@ -18,10 +18,10 @@ import (
 func Registration() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var u *userstore.User
-		var answer *components.ReqAnswer
+		var answer *chttp.ReqAnswer
 
 		// Handling post request
-		answer = components.PostReqHandler(&u, w, r)
+		answer = chttp.PostReqHandler(&u, w, r)
 		user := userstore.User{
 			Email:    u.Email,
 			Password: u.Password,
@@ -33,13 +33,13 @@ func Registration() http.Handler {
 			// new struct for new user
 			var newUser userstore.User
 			// Set query data for fields the newUser
-			components.Unmarshal(answer.Data, &newUser)
+			chttp.Unmarshal(answer.Data, &newUser)
 
 			// Creat hash from password
 			password := []byte(newUser.Password)
 			hashedPassword, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
 			if err != nil {
-				components.HandleAnswerError(err, answer, custErrMsg)
+				chttp.HandleAnswerError(err, answer, custErrMsg)
 				return
 			}
 
@@ -51,7 +51,7 @@ func Registration() http.Handler {
 				&user.ID, &user.Email, &user.CrtdAt)
 			user.Password = ""
 			if err != nil {
-				components.HandleAnswerError(err, answer, custErrMsg)
+				chttp.HandleAnswerError(err, answer, custErrMsg)
 				panic(err)
 			}
 
@@ -71,10 +71,10 @@ func Registration() http.Handler {
 }
 
 // registerValidation ...
-func registerValidation(model interface{}, answer *components.ReqAnswer) *components.ReqAnswer {
+func registerValidation(model interface{}, answer *chttp.ReqAnswer) *chttp.ReqAnswer {
 	if answer.Error == 0 {
 		// Set empty answer struct
-		answer = &components.ReqAnswer{}
+		answer = &chttp.ReqAnswer{}
 
 		// Initialization new validation instance
 		v := validator.New()

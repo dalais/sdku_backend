@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dalais/sdku_backend/chttp"
 	gl "github.com/dalais/sdku_backend/cmd/global"
-	"github.com/dalais/sdku_backend/components"
 	"github.com/dalais/sdku_backend/store"
 	userstore "github.com/dalais/sdku_backend/store/user"
 	"github.com/gorilla/sessions"
@@ -30,9 +30,9 @@ func (m *LoginError) Error() string {
 func Login() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var u *userstore.User
-		var answer *components.ReqAnswer
+		var answer *chttp.ReqAnswer
 		// Handle http request
-		answer = components.PostReqHandler(&u, w, r)
+		answer = chttp.PostReqHandler(&u, w, r)
 
 		user := userstore.User{
 			Email:      u.Email,
@@ -44,7 +44,7 @@ func Login() http.Handler {
 		// Validation fields
 		user, answer = loginValidation(user, answer)
 
-		var token components.TokenObj
+		var token chttp.TokenObj
 
 		// Create and store token
 		if answer.IsEmptyError() {
@@ -69,13 +69,13 @@ func Login() http.Handler {
 			}
 			err := session.Save(r, w)
 			if err != nil {
-				components.HandleAnswerError(err, answer, "Internal Server Error")
+				chttp.HandleAnswerError(err, answer, "Internal Server Error")
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			if answer.IsEmptyError() {
 				answer.Message = "Authentication is successful"
-				components.SendTokenToCookie(w, "_token", token.Token, time.Hour*24*7)
+				chttp.SendTokenToCookie(w, "_token", token.Token, time.Hour*24*7)
 			}
 		}
 
@@ -84,15 +84,15 @@ func Login() http.Handler {
 }
 
 // LoginValidation ...
-func loginValidation(user userstore.User, answer *components.ReqAnswer) (
-	userstore.User, *components.ReqAnswer) {
+func loginValidation(user userstore.User, answer *chttp.ReqAnswer) (
+	userstore.User, *chttp.ReqAnswer) {
 	if answer.Error == 0 {
 		// new error struct for answer.ErrMesgs
 		errMsgs := struct {
 			Error string `json:"error"`
 		}{}
 		// New answer struct
-		answer = &components.ReqAnswer{}
+		answer = &chttp.ReqAnswer{}
 
 		// Getting the password sent in the request
 		password := []byte(user.Password)
@@ -101,20 +101,20 @@ func loginValidation(user userstore.User, answer *components.ReqAnswer) (
 		row := store.Db.QueryRow(`SELECT id, email, role, password, crtd_at FROM users WHERE email=$1`, user.Email).Scan(
 			&user.ID, &user.Email, &user.Role, &user.Password, &user.CrtdAt)
 		if row != nil {
-			components.HandleAnswerError(row, answer, custErrMsg)
+			chttp.HandleAnswerError(row, answer, custErrMsg)
 			answer.Data = nil
 		}
 
 		// If record exist, compare passwords
 		if row == nil {
 			err := bcrypt.CompareHashAndPassword([]byte(user.Password), password)
-			components.HandleAnswerError(err, answer, custErrMsg)
+			chttp.HandleAnswerError(err, answer, custErrMsg)
 		}
 		user.Password = ""
 
 		// Errors handling
 		if errMsgs.Error != "" {
-			components.HandleAnswerError(&LoginError{}, answer, custErrMsg)
+			chttp.HandleAnswerError(&LoginError{}, answer, custErrMsg)
 		}
 
 		// If there are no errors, we set user data for the answer.Data field
@@ -127,15 +127,15 @@ func loginValidation(user userstore.User, answer *components.ReqAnswer) (
 }
 
 // TODO ...
-func storeToken(user userstore.User, answer *components.ReqAnswer) components.TokenObj {
+func storeToken(user userstore.User, answer *chttp.ReqAnswer) chttp.TokenObj {
 
 	var tokenID int64
 	// Create sercret string
-	secret := components.RandomString(32)
+	secret := chttp.RandomString(32)
 
 	// BEGIN transaction
 	tx, err := store.Db.Begin()
-	components.HandleAnswerError(err, answer, custErrMsg)
+	chttp.HandleAnswerError(err, answer, custErrMsg)
 
 	createTokensql := `
 				INSERT INTO auth_tokens (user_id)
@@ -143,46 +143,46 @@ func storeToken(user userstore.User, answer *components.ReqAnswer) components.To
 	err = tx.QueryRow(createTokensql, user.ID).Scan(&tokenID)
 	if err != nil {
 		tx.Rollback()
-		components.HandleAnswerError(err, answer, custErrMsg)
+		chttp.HandleAnswerError(err, answer, custErrMsg)
 	}
 
 	// insert record into table2, referencing the first record from table1
 	_, err = tx.Exec("INSERT INTO auth_access(token_id, secret) VALUES($1, $2)", tokenID, secret)
 	if err != nil {
 		tx.Rollback()
-		components.HandleAnswerError(err, answer, custErrMsg)
+		chttp.HandleAnswerError(err, answer, custErrMsg)
 	}
 	// Create token object
-	token := components.GetToken(secret, tokenID, user.ID)
+	token := chttp.GetToken(secret, tokenID, user.ID)
 
 	// insert access_token
 	_, err = tx.Exec("UPDATE auth_tokens SET access_token=$1 WHERE id=$2", token.Token, tokenID)
 	if err != nil {
 		tx.Rollback()
-		components.HandleAnswerError(err, answer, custErrMsg)
+		chttp.HandleAnswerError(err, answer, custErrMsg)
 	}
 
 	// COMMIT the transaction
-	components.HandleAnswerError(tx.Commit(), answer, custErrMsg)
+	chttp.HandleAnswerError(tx.Commit(), answer, custErrMsg)
 	if !answer.IsEmptyError() {
 		token.Token = ""
 		answer.Data = nil
 	}
 
-	tokenHMSet(user.ID, token)
+	tokenHMSet(user, token)
 
 	return token
 }
 
 // Store token in redis
-func tokenHMSet(userID int64, token components.TokenObj) {
+func tokenHMSet(user userstore.User, token chttp.TokenObj) {
 	// get conn and put back when exit from method
 	conn := gl.RPool.Get()
 	defer conn.Close()
 
 	tokenIDStr := fmt.Sprintf("%v", token.ID)
 
-	_, err := conn.Do("HMSET", "token:"+tokenIDStr, "user_id", userID, "token", token.Token)
+	_, err := conn.Do("HMSET", "token:"+tokenIDStr, "user_id", user.ID, "role", user.Role, "token", token.Token)
 	if err != nil {
 		log.Printf("ERROR: fail set key %s, val %s, error %s", "token:"+tokenIDStr, token.Token, err.Error())
 	} else {
