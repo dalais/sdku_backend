@@ -42,34 +42,6 @@ type CustJwtMiddleware struct {
 	*jwtmiddleware.JWTMiddleware
 }
 
-// GetTokenHandler ...
-var GetTokenHandler = http.HandlerFunc(func(w http.ResponseWriter,
-	r *http.Request) {
-	// Создаем новый токен
-	token := jwt.New(jwt.SigningMethodHS256)
-	claims := token.Claims.(jwt.MapClaims)
-
-	// Устанавливаем набор параметров для токена
-	claims["admin"] = true
-	claims["name"] = "Adminushka"
-	claims["exp"] = time.Now().Add(30 * 24 * time.Hour).Unix()
-
-	// Подписываем токен нашим секретным ключем
-	tokenString, _ := token.SignedString(gl.Conf.APPKey)
-
-	tokenObj := TokenObj{
-		Token: tokenString,
-	}
-	// Отдаем токен клиенту
-	SendTokenToCookie(w, "_token", tokenString, 1*time.Hour)
-	if string(gl.Conf.APPKey) == "" {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode("API key is not found")
-	} else {
-		json.NewEncoder(w).Encode(tokenObj)
-	}
-})
-
 // GetToken for login proccess
 var GetToken = func(key string, tokenID int64, userID int64) TokenObj {
 	// Create new token
@@ -96,15 +68,6 @@ var GetToken = func(key string, tokenID int64, userID int64) TokenObj {
 }
 
 var custJwtMiddle CustJwtMiddleware
-
-// AppJwtMiddleware ...
-var AppJwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
-	Extractor: custJwtMiddle.FromCookie,
-	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-		return gl.Conf.APPKey, nil
-	},
-	SigningMethod: jwt.SigningMethodHS256,
-})
 
 // JwtMdlw ...
 var JwtMdlw = jwtmiddleware.New(jwtmiddleware.Options{

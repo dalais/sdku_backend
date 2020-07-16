@@ -81,16 +81,16 @@ func main() {
 	sr := r.PathPrefix("/api/").Subrouter()
 
 	sa := sr.PathPrefix("/auth/").Subrouter()
-	sa.Handle("/verify", chttp.JwtMdlw.Handler(AuthValidate)).Methods("GET")
+	sa.Handle("/verify", authMdlw(AuthValidate)).Methods("GET")
 	sa.Handle("/register", auth.Registration()).Methods("POST")
 	sa.Handle("/login", auth.Login()).Methods("POST")
 
-	sr.Handle("/status", sessionMdlw(
-		chttp.JwtMdlw.Handler(StatusHandler),
+	sr.Handle("/status", authMdlw(
+		authMdlw(StatusHandler),
 	),
 	).Methods("GET")
 
-	sr.Handle("/products", chttp.JwtMdlw.Handler(
+	sr.Handle("/products", authMdlw(
 		producthandler.Index(),
 	),
 	).Methods("GET")
@@ -131,28 +131,9 @@ var AuthValidate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(answer)
 })
 
-func sessionMdlw(next http.Handler) http.Handler {
+func authMdlw(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session, _ := gl.StoreSession.Get(r, "sessid")
-		authHeader := r.Header.Get("Cookie")
-		cookie, _ := r.Cookie("_token")
-		if session.IsNew {
-			c := &http.Cookie{
-				Name:    "_token",
-				Value:   "",
-				Path:    "/",
-				Expires: time.Unix(0, 0),
-
-				HttpOnly: true,
-			}
-			http.SetCookie(w, c)
-			if authHeader != "" && cookie != nil {
-				tokenData := chttp.TokenPayload(cookie.Value)
-				_ = gl.Db.QueryRow(`DELETE FROM auth_access WHERE token_id=$1`, tokenData.TokenID)
-
-			}
-		} else {
-			next.ServeHTTP(w, r)
-		}
+		jwt := chttp.JwtMdlw.Handler(next)
+		jwt.ServeHTTP(w, r)
 	})
 }
