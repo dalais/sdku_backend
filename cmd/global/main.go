@@ -36,18 +36,20 @@ func InitRPool() {
 				log.Printf("ERROR: fail init redis pool: %s", err.Error())
 				os.Exit(1)
 			}
+			conn.Do("AUTH", Conf.Redis.Pass)
 			return conn, err
 		},
 	}
 }
 
 // Rping redis connection ping
-func Rping(conn redis.Conn) bool {
+func Rping() error {
+	conn := RPool.Get()
+	defer conn.Close()
 	_, err := redis.String(conn.Do("PING"))
 	if err != nil {
 		log.Printf("ERROR: fail ping redis conn: %s", err.Error())
-		os.Exit(1)
-		return false
+		return err
 	}
-	return true
+	return nil
 }

@@ -7,7 +7,7 @@ require (
 	github.com/badoux/checkmail v0.0.0-20200623144435-f9f80cb795fa
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-playground/validator/v10 v10.3.0
-	github.com/golang/gddo v0.0.0-20200611223618-a4829ef13274
+	github.com/golang/gddo v0.0.0-20200715224205-051695c33a3f
 	github.com/gomodule/redigo v1.8.2
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.4

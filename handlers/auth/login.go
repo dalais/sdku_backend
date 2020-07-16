@@ -2,6 +2,8 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -167,5 +169,35 @@ func storeToken(user userstore.User, answer *components.ReqAnswer) components.To
 		answer.Data = nil
 	}
 
+	tokenHMSet(user.ID, token)
+
 	return token
+}
+
+// Store token in redis
+func tokenHMSet(userID int64, token components.TokenObj) {
+	// get conn and put back when exit from method
+	conn := gl.RPool.Get()
+	defer conn.Close()
+
+	tokenIDStr := fmt.Sprintf("%v", token.ID)
+
+	_, err := conn.Do("HMSET", "token:"+tokenIDStr, "user_id", userID, "token", token.Token)
+	if err != nil {
+		log.Printf("ERROR: fail set key %s, val %s, error %s", "token:"+tokenIDStr, token.Token, err.Error())
+	} else {
+		_, err = conn.Do("EXPIRE", "token:"+tokenIDStr, token.LifeSec)
+		if err != nil {
+			log.Printf("ERROR: fail set expire for %s, error %s", "token:"+tokenIDStr, err.Error())
+		}
+	}
+	_, err = conn.Do("HMSET", "access:"+tokenIDStr, "secret", token.Secret)
+	if err != nil {
+		log.Printf("ERROR: fail set key %s, val %s, error %s", "access:"+tokenIDStr, token.Secret, err.Error())
+	} else {
+		_, err = conn.Do("EXPIRE", "access:"+tokenIDStr, token.LifeSec)
+		if err != nil {
+			log.Printf("ERROR: fail set expire for %s, error %s", "access:"+tokenIDStr, err.Error())
+		}
+	}
 }

@@ -10,17 +10,31 @@ import (
 	gl "github.com/dalais/sdku_backend/cmd/global"
 	"github.com/dalais/sdku_backend/store"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gomodule/redigo/redis"
 )
 
 // TokenObj ...
 type TokenObj struct {
-	Token string `json:"token"`
+	ID      int64  `json:"id"`
+	Token   string `json:"token"`
+	LifeSec int    `json:"life_sec"`
+	Secret  string `json:"secret"`
+}
+
+// NewTokenObj ...
+func NewTokenObj() TokenObj {
+	tObj := TokenObj{}
+	tObj.ID = 0
+	tObj.LifeSec = 43200
+	tObj.Token = ""
+	tObj.Secret = ""
+	return tObj
 }
 
 // TokenData ...
 type TokenData struct {
-	AuthID int64 `json:"auth_id"`
-	UserID int64 `json:"user_id"`
+	TokenID int64 `json:"token_id"`
+	UserID  int64 `json:"user_id"`
 }
 
 // CustJwtMiddleware ...
@@ -62,7 +76,7 @@ var GetToken = func(key string, tokenID int64, userID int64) TokenObj {
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 	tokenData := TokenData{}
-	tokenData.AuthID = tokenID
+	tokenData.TokenID = tokenID
 	tokenData.UserID = userID
 	jsData, _ := json.Marshal(tokenData)
 	strData := string(jsData)
@@ -74,9 +88,10 @@ var GetToken = func(key string, tokenID int64, userID int64) TokenObj {
 	// Signing the token
 	tokenString, _ := token.SignedString([]byte(key))
 
-	tokenObj := TokenObj{
-		Token: tokenString,
-	}
+	tokenObj := NewTokenObj()
+	tokenObj.ID = tokenID
+	tokenObj.Token = tokenString
+	tokenObj.Secret = key
 	return tokenObj
 }
 
@@ -91,8 +106,8 @@ var AppJwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 	SigningMethod: jwt.SigningMethodHS256,
 })
 
-// UserJwtMiddleware ...
-var UserJwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
+// JwtMdlw ...
+var JwtMdlw = jwtmiddleware.New(jwtmiddleware.Options{
 	Extractor: custJwtMiddle.FromCookie,
 	ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 		var secret []byte
@@ -101,11 +116,21 @@ var UserJwtMiddleware = jwtmiddleware.New(jwtmiddleware.Options{
 		tokenData := TokenData{}
 		jsData := DecryptStr(gl.Conf.APPKey, data)
 		json.Unmarshal([]byte(jsData), &tokenData)
-		// Select secret from db
-		row := store.Db.QueryRow(`SELECT secret FROM auth_access WHERE token_id=$1`, tokenData.AuthID).Scan(&secret)
-		if row != nil {
-			fmt.Println(row)
+
+		conn := gl.RPool.Get()
+		defer conn.Close()
+		// Get secret from redis
+		redisSecret, err := redis.String(conn.Do("HGET", "access:"+fmt.Sprintf("%v", tokenData.TokenID), "secret"))
+		if err == nil || err != redis.ErrNil {
+			secret = []byte(redisSecret)
+		} else {
+			// Select secret from db
+			row := store.Db.QueryRow(`SELECT secret FROM auth_access WHERE token_id=$1`, tokenData.TokenID).Scan(&secret)
+			if row != nil {
+				fmt.Println(row)
+			}
 		}
+
 		return secret, nil
 	},
 	SigningMethod: jwt.SigningMethodHS256,

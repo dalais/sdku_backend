@@ -68,6 +68,10 @@ func init() {
 
 	// Redis connection
 	gl.InitRPool()
+	err = gl.Rping()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 }
 
 func main() {
@@ -80,24 +84,21 @@ func main() {
 	sr := r.PathPrefix("/api/").Subrouter()
 
 	sa := sr.PathPrefix("/auth/").Subrouter()
-	sa.Handle("/verify", components.UserJwtMiddleware.Handler(AuthValidate)).Methods("GET")
+	sa.Handle("/verify", components.JwtMdlw.Handler(AuthValidate)).Methods("GET")
 	sa.Handle("/register", auth.Registration()).Methods("POST")
 	sa.Handle("/login", auth.Login()).Methods("POST")
 
 	sr.Handle("/status", sessionMdlw(
-		components.UserJwtMiddleware.Handler(StatusHandler),
+		components.JwtMdlw.Handler(StatusHandler),
 	),
 	).Methods("GET")
 
-	sr.Handle("/products", components.UserJwtMiddleware.Handler(
+	sr.Handle("/products", components.JwtMdlw.Handler(
 		producthandler.Index(),
 	),
 	).Methods("GET")
 
-	// Static files
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/",
-		http.FileServer(http.Dir(gl.ROOT+"/static/"))))
-
+	// CORS
 	http.ListenAndServe(":"+gl.Conf.Server.Port, handlers.CORS(
 		handlers.AllowCredentials(),
 		handlers.AllowedHeaders([]string{"X-Requested-With", " X-HTTP-Method-Override", "Content-Type"}),
@@ -150,7 +151,7 @@ func sessionMdlw(next http.Handler) http.Handler {
 			http.SetCookie(w, c)
 			if authHeader != "" && cookie != nil {
 				tokenData := components.TokenPayload(cookie.Value)
-				_ = gl.Db.QueryRow(`DELETE FROM auth_access WHERE token_id=$1`, tokenData.AuthID)
+				_ = gl.Db.QueryRow(`DELETE FROM auth_access WHERE token_id=$1`, tokenData.TokenID)
 
 			}
 		} else {

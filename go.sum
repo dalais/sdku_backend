@@ -25,6 +25,8 @@ github.com/go-playground/validator/v10 v10.3.0/go.mod h1:uOYAAleCW8F/7oMFd6aG0GO
 github.com/go-stack/stack v1.6.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
 github.com/golang/gddo v0.0.0-20200611223618-a4829ef13274 h1:q1WDRWSuDPX5UBTPq+QYr6WPOgnz4Hb5k+gY00SdJZg=
 github.com/golang/gddo v0.0.0-20200611223618-a4829ef13274/go.mod h1:sam69Hju0uq+5uvLJUMDlsKlQ21Vrs1Kd/1YFPNYdOU=
+github.com/golang/gddo v0.0.0-20200715224205-051695c33a3f h1:pJ14NLr9vXdAMKYLtypCmM7spi+S2A0iTkwMYNcVBZs=
+github.com/golang/gddo v0.0.0-20200715224205-051695c33a3f/go.mod h1:sam69Hju0uq+5uvLJUMDlsKlQ21Vrs1Kd/1YFPNYdOU=
 github.com/golang/lint v0.0.0-20170918230701-e5d664eb928e/go.mod h1:tluoj9z5200jBnyusfRPU2LqT6J+DAorxEvtC7LHB+E=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/snappy v0.0.0-20170215233205-553a64147049/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
