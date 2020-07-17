@@ -62,7 +62,7 @@ func Registration() http.Handler {
 				}{
 					User: user,
 				}
-				answer.Data = append(answer.Data, u)
+				answer.Data = u
 			}
 
 		}
@@ -144,7 +144,7 @@ func registerValidation(model interface{}, answer *chttp.ReqAnswer) *chttp.ReqAn
 			}
 		}
 		answer.Error = len(answer.ErrMesgs)
-		answer.Data = append(answer.Data, model)
+		answer.Data = model
 	}
 
 	return answer

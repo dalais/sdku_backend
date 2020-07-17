@@ -103,7 +103,7 @@ func PostReqHandler(model interface{}, w http.ResponseWriter, r *http.Request) *
 		errMsg = msg
 		w.WriteHeader(http.StatusBadRequest)
 	}
-	answer.Data = append(answer.Data, model)
+	answer.Data = model
 	if answer.IsEmptyData() {
 		msg := "Post data is empty"
 		errMsg = msg

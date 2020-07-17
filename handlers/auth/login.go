@@ -82,7 +82,7 @@ func Login() http.Handler {
 				sessionData.UserID = user.ID
 				sessionData.Token = token.Token
 				sessionData.Role = user.Role
-				answer.Data = append(answer.Data, sessionData)
+				answer.Data = sessionData
 			}
 		}
 
@@ -122,11 +122,6 @@ func loginValidation(user userstore.User, answer *chttp.ReqAnswer) (
 		// Errors handling
 		if errMsgs.Error != "" {
 			chttp.HandleAnswerError(&LoginError{}, answer, custErrMsg)
-		}
-
-		// If there are no errors, we set user data for the answer.Data field
-		if len(answer.ErrMesgs) == 0 {
-			answer.Data = append(answer.Data, user)
 		}
 	}
 
