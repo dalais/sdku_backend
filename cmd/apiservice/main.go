@@ -166,7 +166,10 @@ var SessionValidate = http.HandlerFunc(func(w http.ResponseWriter, r *http.Reque
 func authMdlw(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		jwt := chttp.JwtMdlw.Handler(next)
-		//w.Header().Set("X-CSRF-Token", csrf.Token(r))
-		jwt.ServeHTTP(w, r)
+		if r.Header.Get("Authorization") == "" {
+			http.Error(w, "404 Not Found", http.StatusNotFound)
+		} else {
+			jwt.ServeHTTP(w, r)
+		}
 	})
 }
