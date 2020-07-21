@@ -86,6 +86,7 @@ func main() {
 	sa.Handle("/session", SessionValidate).Methods("POST")
 	sa.Handle("/register", auth.Registration()).Methods("POST")
 	sa.Handle("/login", auth.Login()).Methods("POST")
+	sa.Handle("/logout", auth.Logout()).Methods("GET")
 
 	sr.Handle("/status", authMdlw(
 		authMdlw(StatusHandler),
